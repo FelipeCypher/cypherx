@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CYPHERX</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: #000;
+      color: #fff;
+      font-family: 'Arial', sans-serif;
+      overflow-x: hidden;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    body.light {
+      background: #fff;
+      color: #000;
+    }
+    .neon-red {
+      color: #ff025c;
+      text-shadow: 0 0 5px #ff025c, 0 0 10px #ff025c, 0 0 15px #ff025c;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 20px;
+    }
+    body.light .card {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    .btn {
+      background: #000;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.5);
+      transform: translateZ(0);
+    }
+    body.light .btn {
+      background: #fff;
+      color: #000;
+    }
+    .btn:hover {
+      transform: scale(1.05) translateZ(5px);
+      background: #fff;
+      color: #000;
+      text-shadow: 0 0 5px #fff, 0 0 10px #fff;
+    }
+    body.light .btn:hover {
+      background: #000;
+      color: #fff;
+      text-shadow: 0 0 5px #000, 0 0 10px #000;
+    }
+    #winBtn, #lossBtn {
+      box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.5);
+      transform: translateZ(0);
+    }
+    #winBtn:hover, #winBtn.active {
+      background: #00ffc2;
+      color: #000;
+      transform: scale(1.05) translateZ(5px);
+    }
+    #lossBtn:hover, #lossBtn.active {
+      background: #ff025c;
+      color: #000;
+      transform: scale(1.05) translateZ(5px);
+    }
+    .next-entry {
+      position: relative;
+      font-size: 24px;
+      font-weight: bold;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 5px 10px;
+      border-radius: 5px;
+      box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.5), 2px 2px 5px rgba(255, 255, 255, 0.1);
+      text-align: center;
+    }
+    body.light .next-entry {
+      background: rgba(255, 255, 255, 0.3);
+      box-shadow: inset 2px 2px 5px rgba(255, 255, 255, 0.5), 2px 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    .progress-bar {
+      height: 10px;
+      background: linear-gradient(to right, #ff025c, #00ffc2);
+      border-radius: 5px;
+      position: relative;
+    }
+    .progress-dot {
+      width: 15px;
+      height: 15px;
+      background: #fff;
+      border-radius: 50%;
+      position: absolute;
+      top: -5px;
+      transform: translateX(-50%);
+      box-shadow: 0 0 10px #fff, 0 0 20px #fff;
+      animation: pulseDot 1.5s infinite;
+    }
+    body.light .progress-dot {
+      background: #000;
+      box-shadow: 0 0 10px #000, 0 0 20px #000;
+    }
+    @keyframes pulseDot {
+      0% { box-shadow: 0 0 10px #fff, 0 0 20px #fff; }
+      50% { box-shadow: 0 0 15px #fff, 0 0 30px #fff; }
+      100% { box-shadow: 0 0 10px #fff, 0 0 20px #fff; }
+    }
+    body.light @keyframes pulseDot {
+      0% { box-shadow: 0 0 10px #000, 0 0 20px #000; }
+      50% { box-shadow: 0 0 15px #000, 0 0 30px #000; }
+      100% { box-shadow: 0 0 10px #000, 0 0 20px #000; }
+    }
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: linear-gradient(45deg, #00ffc2, #00ffc2);
+      color: #000;
+      padding: 10px 20px;
+      border-radius: 5px;
+      box-shadow: 0 0 10px #00ffc2;
+      display: none;
+      z-index: 1000;
+    }
+    .laser-green {
+      position: absolute;
+      width: 2px;
+      height: 200px;
+      background: linear-gradient(to bottom, transparent, #00ffc2, transparent);
+      animation: laser 1s infinite;
+    }
+    @keyframes laser {
+      0% { transform: translateY(-200px); }
+      100% { transform: translateY(100vh); }
+    }
+    .floating-dollar {
+      position: absolute;
+      font-size: 24px;
+      color: #00ffc2;
+      animation: float 3s infinite;
+    }
+    @keyframes float {
+      0% { transform: translateY(0); opacity: 1; }
+      50% { transform: translateY(-20px); opacity: 0.7; }
+      100% { transform: translateY(0); opacity: 1; }
+    }
+    .alert-red {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: #ff025c;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 5px;
+      box-shadow: 0 0 10px #ff025c;
+      display: none;
+      z-index: 1000;
+    }
+    body.light .alert-red {
+      color: #000;
+    }
+    .cyan-glow {
+      color: #00ffff;
+      text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff;
+      animation: cyanPulse 2s infinite;
+    }
+    @keyframes cyanPulse {
+      0% { text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff; }
+      50% { text-shadow: 0 0 15px #00ffff, 0 0 30px #00ffff; }
+      100% { text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff; }
+    }
+    .nav-btn, .mode-btn {
+      background: #000;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.5);
+      transform: translateZ(0);
+      border: none;
+    }
+    body.light .nav-btn, body.light .mode-btn {
+      background: #fff;
+      color: #000;
+    }
+    .nav-btn:hover, .mode-btn:hover {
+      transform: scale(1.05) translateZ(5px);
+      background: #fff;
+      color: #000;
+      text-shadow: 0 0 5px #fff, 0 0 10px #fff;
+    }
+    body.light .nav-btn:hover, body.light .mode-btn:hover {
+      background: #000;
+      color: #fff;
+      text-shadow: 0 0 5px #000, 0 0 10px #000;
+    }
+    .nav-btn.active, .mode-btn.active {
+      background: linear-gradient(45deg, #2d2d2d, #4a4a4a);
+      color: #fff;
+      box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.5), inset 0 0 10px rgba(255, 255, 255, 0.2);
+    }
+    body.light .nav-btn.active, body.light .mode-btn.active {
+      background: linear-gradient(45deg, #2d2d2d, #4a4a4a);
+      color: #fff;
+    }
+    .info-field {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 5px 10px;
+      border-radius: 5px;
+      box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.5), 2px 2px 5px rgba(255, 255, 255, 0.1);
+    }
+    body.light .info-field {
+      background: rgba(255, 255, 255, 0.3);
+      box-shadow: inset 2px 2px 5px rgba(255, 255, 255, 0.5), 2px 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    .theme-toggle {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: #000;
+      color: #fff;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.5);
+    }
+    body.light .theme-toggle {
+      background: #fff;
+      color: #000;
+    }
+    .theme-toggle:hover {
+      transform: scale(1.05);
+      background: #fff;
+      color: #000;
+      text-shadow: 0 0 5px #fff, 0 0 10px #fff;
+    }
+    body.light .theme-toggle:hover {
+      background: #000;
+      color: #fff;
+      text-shadow: 0 0 5px #000, 0 0 10px #000;
+    }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle" onclick="toggleTheme()">☼ | ☽</button>
+  <div class="flex justify-center items-center mb-4">
+    <h1 class="text-4xl font-bold">CYPHER<span class="neon-red">X</span></h1>
+  </div>
+  <div class="flex justify-center mb-4">
+    <nav class="flex space-x-4">
+      <button class="nav-btn" onclick="showSection('config')">Configurações</button>
+      <button class="nav-btn active" onclick="showSection('operation')">Operação</button>
+      <button class="nav-btn" onclick="showSection('stats')">Estatísticas</button>
+    </nav>
+  </div>
+
+  <div id="config" class="card hidden">
+    <h2 class="text-2xl mb-4">Configurações Iniciais</h2>
+    <div class="mb-4">
+      <label class="block mb-2">Banca Inicial ($)</label>
+      <input type="number" id="initialBank" class="w-full p-2 bg-gray-800 border border-gray-700 rounded" value="26.98">
+    </div>
+    <div class="mb-4">
+      <label class="block mb-2">Payout (%)</label>
+      <input type="number" id="payout" class="w-full p-2 bg-gray-800 border border-gray-700 rounded" value="90" min="85" max="100">
+    </div>
+    <div class="mb-4">
+      <label class="block mb-2">Modo de Operação</label>
+      <div class="flex space-x-2">
+        <button class="mode-btn" onclick="setMode('Conservador')">Conservador</button>
+        <button class="mode-btn" onclick="setMode('Equilibrado')">Equilibrado</button>
+        <button class="mode-btn active" onclick="setMode('Agressivo')">Agressivo</button>
+        <button class="mode-btn" onclick="setMode('Extremo')">Extremo</button>
+      </div>
+    </div>
+    <button class="btn w-full" onclick="saveConfig()">Salvar Configurações</button>
+  </div>
+
+  <div id="operation" class="card">
+    <h2 class="text-2xl mb-4">Painel de Operação</h2>
+    <div class="grid grid-cols-2 gap-4 mb-4">
+      <div>
+        <p>Ciclo Atual</p>
+        <p class="text-xl info-field" id="currentCycle">1</p>
+      </div>
+      <div>
+        <p>Nível Atual</p>
+        <p class="text-xl info-field" id="currentLevel">1</p>
+      </div>
+      <div>
+        <p>Entradas no Nível</p>
+        <p class="info-field" id="entriesInLevel">0/4</p>
+      </div>
+      <div>
+        <p>Wins no Nível</p>
+        <p class="info-field" id="winsInLevel">0/2</p>
+      </div>
+    </div>
+    <div class="mb-4">
+      <h3 class="text-lg mb-2 text-center">Próxima Entrada</h3>
+      <div class="next-entry" id="nextEntry">$0.00</div>
+      <div class="mt-2">
+        <label class="block mb-2">Editar Valor da Entrada</label>
+        <input type="number" id="customEntry" class="w-full p-2 bg-gray-800 border border-gray-700 rounded" value="0.00" step="0.01">
+        <button class="btn mt-2 w-full" onclick="applyCustomEntry()">Aplicar</button>
+      </div>
+    </div>
+    <div class="flex space-x-4 mb-4">
+      <button id="winBtn" class="btn w-1/2" onclick="recordResult('win')">WIN</button>
+      <button id="lossBtn" class="btn w-1/2" onclick="recordResult('loss')">LOSS</button>
+    </div>
+    <div class="flex space-x-4">
+      <button class="btn w-1/2" onclick="deleteLastEntry()">Apagar Última Entrada</button>
+      <button class="btn w-1/2" onclick="restartEntries()">Reiniciar Entradas</button>
+    </div>
+    <div class="mt-4">
+      <h3 class="text-lg mb-2">Histórico (Últimas 6 Entradas)</h3>
+      <ul id="history" class="list-none"></ul>
+    </div>
+    <button class="btn mt-4 w-full" onclick="startOperation()">Reiniciar Tudo</button>
+  </div>
+
+  <div id="stats" class="card hidden">
+    <h2 class="text-2xl mb-4">Estatísticas</h2>
+    <div class="grid grid-cols-2 gap-4 mb-4">
+      <div>
+        <p>Banca Atual</p>
+        <p id="currentBank" class="text-xl info-field">$26.98</p>
+      </div>
+      <div>
+        <p>Rentabilidade</p>
+        <p id="profit" class="text-xl info-field">$0,00 — 0%</p>
+      </div>
+      <div>
+        <p>Reserva</p>
+        <p id="reserve" class="text-xl info-field">$0.00</p>
+      </div>
+    </div>
+    <div class="mb-4 text-center">
+      <h3 class="text-lg mb-2">Barra de Progresso</h3>
+      <div class="flex justify-between text-sm mb-1">
+        <span>Margem de Risco: $<span id="riskMarginDisplay" style="color: #ff0000;">0.00</span></span>
+        <span>Meta de Lucro: $<span id="profitTargetDisplay" style="color: #00ff00;">0.00</span></span>
+      </div>
+      <div class="progress-bar">
+        <div id="progressDot" class="progress-dot" style="left: 50%;"></div>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <h3 class="text-lg mb-2">Resumo de Operações</h3>
+        <p>Total de Entradas: <span class="info-field" id="totalEntries">0</span></p>
+        <p>Wins: <span class="info-field" id="wins">0</span></p>
+        <p>Losses: <span class="info-field" id="losses">0</span></p>
+      </div>
+      <div>
+        <h3 class="text-lg mb-2">Taxa de Acerto</h3>
+        <p class="info-field" id="accuracy">0%</p>
+      </div>
+    </div>
+    <div class="mt-4">
+      <h3 class="text-lg mb-2">Desempenho</h3>
+      <canvas id="performanceChart" style="height: 100px;"></canvas>
+    </div>
+  </div>
+
+  <div id="notification" class="notification"></div>
+  <div id="alert" class="alert-red"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    let initialBank = 26.98;
+    let bank = initialBank;
+    let payout = 90;
+    let mode = 'Agressivo';
+    let cycle = 1;
+    let level = 1;
+    let entries = 0;
+    let wins = 0;
+    let losses = 0;
+    let consecutiveLosses = 0;
+    let lastEntryValue = 0;
+    let history = [];
+    let profit = 0;
+    let cycleValue = 0;
+    let levelHistory = [];
+    let levelProfit = 0;
+    let operationEnded = false;
+    let levelInitialOrder = 0;
+    let cycleProfits = [];
+    let cycleStartProfit = 0;
+    const currentDate = new Date('2025-05-09');
+    const endOfMonth = new Date('2025-05-31');
+
+    function formatNumber(value) {
+      const parts = value.toFixed(2).split('.');
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      return '$' + parts.join(',');
+    }
+
+    function formatPercentage(value) {
+      return value.toFixed(0) + '%';
+    }
+
+    function formatProfit(profitValue, percentage) {
+      return `${formatNumber(profitValue)} — ${formatPercentage(percentage)}`;
+    }
+
+    function calculateRiskMargin() {
+      switch (mode) {
+        case 'Conservador': return initialBank * 0.01 * 3;
+        case 'Equilibrado': return initialBank * 0.03 * 3;
+        case 'Agressivo': return initialBank * 0.12 * 3;
+        case 'Extremo': return initialBank * 1 * 1;
+        default: return 0;
+      }
+    }
+
+    function calculateCycleValue(riskMargin) {
+      return parseFloat((riskMargin / 3).toFixed(2));
+    }
+
+    function calculateProfitTarget(riskMargin) {
+      return parseFloat((riskMargin * 1.349).toFixed(2));
+    }
+
+    function calculateNextEntry() {
+      const riskMargin = calculateRiskMargin();
+      cycleValue = calculateCycleValue(riskMargin);
+
+      if (entries === 0) {
+        if (level === 1) {
+          levelInitialOrder = parseFloat((cycleValue * 0.315).toFixed(2));
+          return levelInitialOrder;
+        } else if (level === 2) {
+          let cycleLevelProfit = profit - cycleStartProfit;
+          levelInitialOrder = parseFloat(((cycleLevelProfit + cycleValue) * 0.315).toFixed(2));
+          return levelInitialOrder;
+        }
+      }
+
+      const lastResult = history[history.length - 1].result;
+      const lastValue = history[history.length - 1].value;
+
+      if (lastResult === 'loss') {
+        return parseFloat((lastValue * 2.17).toFixed(2));
+      }
+
+      if (lastResult === 'win') {
+        if (wins === 1) {
+          return parseFloat((levelInitialOrder * 1.25).toFixed(2));
+        }
+      }
+
+      return lastEntryValue;
+    }
+
+    function getLastThreeCycleRentability() {
+      if (cycleProfits.length < 3) return -1;
+      const lastThreeProfits = cycleProfits.slice(-3);
+      const totalProfit = lastThreeProfits.reduce((sum, p) => sum + p, 0);
+      return (totalProfit / initialBank) * 100;
+    }
+
+    function canStartNewCycle() {
+      if (currentDate > endOfMonth) {
+        return false;
+      }
+      if (cycle < 4) {
+        return true;
+      }
+      const rentability = getLastThreeCycleRentability();
+      return rentability >= 28;
+    }
+
+    function updateStats() {
+      const riskMargin = calculateRiskMargin();
+      cycleValue = calculateCycleValue(riskMargin);
+      const profitTarget = calculateProfitTarget(riskMargin);
+      const reserve = profit > profitTarget ? profit - profitTarget : 0;
+      bank = initialBank + profit;
+      document.getElementById('currentBank').textContent = formatNumber(bank);
+      document.getElementById('profit').textContent = formatProfit(profit, (profit / initialBank) * 100);
+      document.getElementById('reserve').textContent = formatNumber(reserve);
+      document.getElementById('riskMarginDisplay').textContent = formatNumber(riskMargin).replace('$', '');
+      document.getElementById('profitTargetDisplay').textContent = formatNumber(profitTarget).replace('$', '');
+      if (profit > 0) document.getElementById('profit').style.color = '#00ffc2';
+      else if (profit < 0) document.getElementById('profit').style.color = '#ff025c';
+      else document.getElementById('profit').style.color = document.body.classList.contains('light') ? '#000' : '#fff';
+      if (reserve > 0) document.getElementById('reserve').className = 'text-xl info-field cyan-glow';
+      else document.getElementById('reserve').className = 'text-xl info-field';
+      const progress = (profit + riskMargin) / (profitTarget + riskMargin) * 100;
+      document.getElementById('progressDot').style.left = progress + '%';
+      const totalEntriesCalc = wins + losses;
+      document.getElementById('totalEntries').textContent = totalEntriesCalc;
+      document.getElementById('wins').textContent = wins;
+      document.getElementById('losses').textContent = losses;
+      document.getElementById('accuracy').textContent = formatPercentage(totalEntriesCalc > 0 ? (wins / totalEntriesCalc) * 100 : 0);
+      document.getElementById('currentCycle').textContent = cycle;
+      document.getElementById('currentLevel').textContent = level;
+      document.getElementById('entriesInLevel').textContent = `${entries}/4`;
+      document.getElementById('winsInLevel').textContent = `${wins}/2`;
+      if (profit >= profitTarget) showCelebration();
+      else if (profit <= -0.9 * riskMargin) showAlert();
+      updateChart();
+    }
+
+    function showCelebration() {
+      for (let i = 0; i < 5; i++) {
+        let laser = document.createElement('div');
+        laser.className = 'laser-green';
+        laser.style.left = Math.random() * 100 + 'vw';
+        document.body.appendChild(laser);
+        setTimeout(() => laser.remove(), 1000);
+      }
+      for (let i = 0; i < 3; i++) {
+        let dollar = document.createElement('div');
+        dollar.className = 'floating-dollar';
+        dollar.textContent = '$';
+        dollar.style.left = Math.random() * 100 + 'vw';
+        dollar.style.top = Math.random() * 100 + 'vh';
+        document.body.appendChild(dollar);
+        setTimeout(() => dollar.remove(), 3000);
+      }
+    }
+
+    function showAlert() {
+      let alert = document.getElementById('alert');
+      alert.textContent = 'Atenção: 90% da margem de risco atingida!';
+      alert.style.display = 'block';
+      setTimeout(() => alert.style.display = 'none', 3000);
+    }
+
+    function showNotification(message) {
+      let notification = document.getElementById('notification');
+      notification.textContent = message;
+      notification.style.display = 'block';
+      setTimeout(() => notification.style.display = 'none', 3000);
+    }
+
+    function recordResult(result) {
+      if (operationEnded) {
+        showNotification('Período de operação encerrado. Reinicie para continuar.');
+        return;
+      }
+
+      let value = parseFloat(document.getElementById('customEntry').value) || calculateNextEntry();
+      let entryProfit = 0;
+      if (result === 'win') {
+        wins++;
+        entryProfit = parseFloat((value * (payout / 100)).toFixed(2));
+        profit = parseFloat((profit + entryProfit).toFixed(2));
+        consecutiveLosses = 0;
+      } else {
+        losses++;
+        entryProfit = -value;
+        profit = parseFloat((profit + entryProfit).toFixed(2));
+        consecutiveLosses++;
+      }
+      history.push({ value: parseFloat(value), result, date: new Date().toLocaleString(), entryProfit });
+      levelHistory.push({ value: parseFloat(value), result, date: new Date().toLocaleString(), entryProfit });
+      entries++;
+
+      if (wins === 2 || consecutiveLosses === 2 || entries === 4) {
+        if (wins === 2) {
+          if (level === 1) {
+            levelProfit = profit - cycleStartProfit;
+            level = 2;
+            wins = 0;
+            entries = 0;
+            consecutiveLosses = 0;
+            levelHistory = [];
+            showNotification(`Nível 1 do ciclo ${cycle} encerrado.`);
+            showNotification(`Nível 2 do ciclo ${cycle} iniciado`);
+          } else {
+            let cycleProfit = (profit - cycleStartProfit);
+            cycleProfits.push(cycleProfit);
+            cycle++;
+            level = 1;
+            cycleStartProfit = profit;
+            wins = 0;
+            entries = 0;
+            consecutiveLosses = 0;
+            levelHistory = [];
+            levelProfit = 0;
+            showNotification(`Nível 2 do ciclo ${cycle - 1} encerrado.`);
+            if (cycle <= 3) {
+              showNotification(`Ciclo ${cycle - 1} encerrado`);
+              showNotification(`Iniciando ciclo ${cycle}`);
+              showNotification(`Nível 1 do ciclo ${cycle} iniciado`);
+            } else if (cycle === 4) {
+              if (!canStartNewCycle()) {
+                showNotification('Período de operação encerrado!');
+                operationEnded = true;
+              } else {
+                showNotification(`Ciclo ${cycle - 1} encerrado`);
+                showNotification(`Iniciando ciclo ${cycle}`);
+                showNotification(`Nível 1 do ciclo ${cycle} iniciado`);
+              }
+            } else if (cycle > 4) {
+              if (!canStartNewCycle()) {
+                showNotification('Período de operação encerrado!');
+                operationEnded = true;
+              } else {
+                showNotification(`Ciclo ${cycle - 1} encerrado`);
+                showNotification(`Iniciando ciclo ${cycle}`);
+                showNotification(`Nível 1 do ciclo ${cycle} iniciado`);
+              }
+            }
+          }
+        } else if (consecutiveLosses === 2) {
+          let cycleProfit = (profit - cycleStartProfit);
+          cycleProfits.push(cycleProfit);
+          cycle++;
+          level = 1;
+          cycleStartProfit = profit;
+          wins = 0;
+          entries = 0;
+          consecutiveLosses = 0;
+          levelHistory = [];
+          levelProfit = 0;
+          showNotification(`Ciclo ${cycle - 1} encerrado devido a 2 losses seguidos`);
+          if (cycle <= 3) {
+            showNotification(`Iniciando ciclo ${cycle}`);
+            showNotification(`Nível 1 do ciclo ${cycle} iniciado`);
+          } else if (cycle === 4) {
+            if (!canStartNewCycle()) {
+              showNotification('Período de operação encerrado!');
+              operationEnded = true;
+            } else {
+              showNotification(`Iniciando ciclo ${cycle}`);
+              showNotification(`Nível 1 do ciclo ${cycle} iniciado`);
+            }
+          } else if (cycle > 4) {
+            if (!canStartNewCycle()) {
+              showNotification('Período de operação encerrado!');
+              operationEnded = true;
+            } else {
+              showNotification(`Iniciando ciclo ${cycle}`);
+              showNotification(`Nível 1 do ciclo ${cycle} iniciado`);
+            }
+          }
+        } else if (entries === 4) {
+          if (level === 1) {
+            levelProfit = profit - cycleStartProfit;
+            level = 2;
+            wins = 0;
+            entries = 0;
+            consecutiveLosses = 0;
+            levelHistory = [];
+            showNotification(`Nível 1 do ciclo ${cycle} encerrado (máximo de entradas atingido).`);
+            showNotification(`Nível 2 do ciclo ${cycle} iniciado`);
+          } else {
+            let cycleProfit = (profit - cycleStartProfit);
+            cycleProfits.push(cycleProfit);
+            cycle++;
+            level = 1;
+            cycleStartProfit = profit;
+            wins = 0;
+            entries = 0;
+            consecutiveLosses = 0;
+            levelHistory = [];
+            levelProfit = 0;
+            showNotification(`Nível 2 do ciclo ${cycle - 1} encerrado (máximo de entradas atingido).`);
+            if (cycle <= 3) {
+              showNotification(`Ciclo ${cycle - 1} encerrado`);
+              showNotification(`Iniciando ciclo ${cycle}`);
+              showNotification(`Nível 1 do ciclo ${cycle} iniciado`);
+            } else if (cycle === 4) {
+              if (!canStartNewCycle()) {
+                showNotification('Período de operação encerrado!');
+                operationEnded = true;
+              } else {
+                showNotification(`Ciclo ${cycle - 1} encerrado`);
+                showNotification(`Iniciando ciclo ${cycle}`);
+                showNotification(`Nível 1 do ciclo ${cycle} iniciado`);
+              }
+            } else if (cycle > 4) {
+              if (!canStartNewCycle()) {
+                showNotification('Período de operação encerrado!');
+                operationEnded = true;
+              } else {
+                showNotification(`Ciclo ${cycle - 1} encerrado`);
+                showNotification(`Iniciando ciclo ${cycle}`);
+                showNotification(`Nível 1 do ciclo ${cycle} iniciado`);
+              }
+            }
+          }
+        }
+      }
+
+      lastEntryValue = value;
+      updateHistory();
+      updateStats();
+      let nextEntryValue = calculateNextEntry();
+      document.getElementById('nextEntry').textContent = formatNumber(nextEntryValue);
+      document.getElementById('customEntry').value = typeof nextEntryValue === 'number' ? nextEntryValue.toFixed(2) : '0.00';
+    }
+
+    function updateHistory() {
+      let historyList = document.getElementById('history');
+      historyList.innerHTML = '';
+      levelHistory.slice(-6).reverse().forEach(entry => {
+        let li = document.createElement('li');
+        li.textContent = `${entry.date}: ${formatNumber(entry.value)} - ${entry.result === 'win' ? 'Lucro' : 'Prejuízo'} (${formatNumber(entry.entryProfit)})`;
+        historyList.appendChild(li);
+      });
+    }
+
+    function deleteLastEntry() {
+      if (history.length > 0 && levelHistory.length > 0) {
+        let last = history.pop();
+        let lastLevel = levelHistory.pop();
+        if (last.result === 'win') {
+          wins--;
+          profit -= last.entryProfit;
+        } else {
+          losses--;
+          profit -= last.entryProfit;
+          consecutiveLosses = Math.max(0, consecutiveLosses - 1);
+        }
+        entries--;
+        if (entries === 0) {
+          if (level === 2) {
+            level = 1;
+            levelProfit = 0;
+          }
+          wins = 0;
+          consecutiveLosses = 0;
+        }
+        updateHistory();
+        updateStats();
+        let nextEntryValue = calculateNextEntry();
+        document.getElementById('nextEntry').textContent = formatNumber(nextEntryValue);
+        document.getElementById('customEntry').value = typeof nextEntryValue === 'number' ? nextEntryValue.toFixed(2) : '0.00';
+      }
+    }
+
+    function restartEntries() {
+      history = [];
+      levelHistory = [];
+      wins = 0;
+      losses = 0;
+      profit = 0;
+      level = 1;
+      cycle = 1;
+      entries = 0;
+      consecutiveLosses = 0;
+      levelProfit = 0;
+      operationEnded = false;
+      levelInitialOrder = 0;
+      cycleProfits = [];
+      cycleStartProfit = 0;
+      updateHistory();
+      updateStats();
+      let nextEntryValue = calculateNextEntry();
+      document.getElementById('nextEntry').textContent = formatNumber(nextEntryValue);
+      document.getElementById('customEntry').value = typeof nextEntryValue === 'number' ? nextEntryValue.toFixed(2) : '0.00';
+      showNotification(`Iniciando ciclo ${cycle}`);
+      showNotification(`Nível 1 do ciclo ${cycle} iniciado`);
+    }
+
+    function startOperation() {
+      initialBank = parseFloat(document.getElementById('initialBank').value) || 26.98;
+      bank = initialBank;
+      history = [];
+      levelHistory = [];
+      wins = 0;
+      losses = 0;
+      profit = 0;
+      level = 1;
+      cycle = 1;
+      entries = 0;
+      consecutiveLosses = 0;
+      lastEntryValue = 0;
+      levelProfit = 0;
+      operationEnded = false;
+      levelInitialOrder = 0;
+      cycleProfits = [];
+      cycleStartProfit = 0;
+      updateHistory();
+      updateStats();
+      let nextEntryValue = calculateNextEntry();
+      document.getElementById('nextEntry').textContent = formatNumber(nextEntryValue);
+      document.getElementById('customEntry').value = typeof nextEntryValue === 'number' ? nextEntryValue.toFixed(2) : '0.00';
+      showNotification(`Iniciando ciclo ${cycle}`);
+      showNotification(`Nível 1 do ciclo ${cycle} iniciado`);
+    }
+
+    function applyCustomEntry() {
+      let value = document.getElementById('customEntry').value;
+      if (value) {
+        lastEntryValue = parseFloat(value);
+        document.getElementById('nextEntry').textContent = formatNumber(lastEntryValue);
+        showNotification('Valor de entrada aplicado');
+      }
+    }
+
+    function saveConfig() {
+      initialBank = parseFloat(document.getElementById('initialBank').value) || 26.98;
+      bank = initialBank;
+      payout = parseInt(document.getElementById('payout').value) || 90;
+      if (payout < 85 || payout > 100) {
+        payout = 90;
+        document.getElementById('payout').value = 90;
+        showNotification('Payout ajustado para 90% (deve estar entre 85% e 100%)');
+      }
+      updateStats();
+      let nextEntryValue = calculateNextEntry();
+      document.getElementById('nextEntry').textContent = formatNumber(nextEntryValue);
+      document.getElementById('customEntry').value = typeof nextEntryValue === 'number' ? nextEntryValue.toFixed(2) : '0.00';
+      showNotification('Configurações salvas');
+    }
+
+    function setMode(newMode) {
+      mode = newMode;
+      document.querySelectorAll('#config .mode-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      updateStats();
+      let nextEntryValue = calculateNextEntry();
+      document.getElementById('nextEntry').textContent = formatNumber(nextEntryValue);
+      document.getElementById('customEntry').value = typeof nextEntryValue === 'number' ? nextEntryValue.toFixed(2) : '0.00';
+    }
+
+    function showSection(section) {
+      document.querySelector('#config').classList.add('hidden');
+      document.querySelector('#operation').classList.add('hidden');
+      document.querySelector('#stats').classList.add('hidden');
+      document.querySelector('#' + section).classList.remove('hidden');
+      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelector(`.nav-btn[onclick="showSection('${section}')"]`).classList.add('active');
+    }
+
+    function updateChart() {
+      const ctx = document.getElementById('performanceChart').getContext('2d');
+      if (window.myChart) window.myChart.destroy();
+      window.myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: history.map((_, i) => i + 1),
+          datasets: [{
+            label: 'Banca',
+            data: [bank, ...history.map(h => bank + h.entryProfit)],
+            borderColor: '#00ffc2',
+            fill: false
+          }]
+        },
+        options: {
+          scales: { y: { beginAtZero: true } },
+          plugins: { legend: { labels: { color: document.body.classList.contains('light') ? '#000' : '#fff' } } }
+        }
+      });
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle('light');
+      updateStats();
+      updateChart();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      updateStats();
+      let nextEntryValue = calculateNextEntry();
+      document.getElementById('nextEntry').textContent = formatNumber(nextEntryValue);
+      document.getElementById('customEntry').value = typeof nextEntryValue === 'number' ? nextEntryValue.toFixed(2) : '0.00';
+      showSection('operation');
+      showNotification(`Iniciando ciclo ${cycle}`);
+      showNotification(`Nível 1 do ciclo ${cycle} iniciado`);
+    });
+  </script>
+</body>
+</html>
