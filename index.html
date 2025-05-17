@@ -9,8 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@403;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    {{!-- A tag da SDK do Supabase também pode ficar aqui no head, ou antes do fechamento do body --}}
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> {{!-- SDK Supabase no head --}}
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -18,13 +17,10 @@
         <nav>
             <div class="logo">CYPHERX</div>
             <ul class="nav-links">
-                {{!-- Links de navegação para as seções da página --}}
                 <li><a href="#home">Início</a></li>
                 <li><a href="#features">Recursos</a></li>
                 <li><a href="#plans">Planos</a></li>
                 <li><a href="#auth">Entrar/Cadastrar</a></li>
-                {{!-- O botão Sair geralmente fica visível apenas no Dashboard, mas mantido aqui se necessário --}}
-                {{!-- <li><a href="#" id="logout-button">Sair</a></li> --}}
             </ul>
         </nav>
     </header>
@@ -40,38 +36,31 @@
         </div>
     </section>
 
-    {{!-- Seção para exibir métricas principais (mockadas no index.html) --}}
     <section class="dynamic-panel-section">
         <div class="dynamic-panel glassmorphic-card">
             <h2>Métricas Principais</h2>
             <div class="metrics-grid">
                 <div class="metric-item">
                     <p>Banca Atual</p>
-                    {{!-- IDs para as métricas mockadas - o script.js loadInitialMetrics preenche estes --}}
-                    <span class="metric-value positive">$ <span id="bancaAtual">--</span></span> {{!-- Mantido ID bancaAtual --}}
+                    <span class="metric-value positive">$ <span id="bancaAtual">--</span></span>
                 </div>
                 <div class="metric-item">
                     <p>Rentabilidade Global</p>
-                     {{!-- Mantido ID rentabilidadeGlobal --}}
                     <span class="metric-value" id="rentabilidadeGlobal">--</span>
                 </div>
                 <div class="metric-item">
                     <p>Meta de Lucro Definida</p>
-                     {{!-- Mantido ID metaLucro --}}
                     <span class="metric-value" id="metaLucro">--</span>
                 </div>
                 <div class="metric-item">
                     <p>Reserva de Capital</p>
-                     {{!-- Mantido ID reservaCapital --}}
                     <span class="metric-value" id="reservaCapital">--</span>
                 </div>
             </div>
-             {{!-- Mantido ID lastUpdate --}}
             <p class="update-info">Última atualização: <span id="lastUpdate">--</span></p>
         </div>
     </section>
 
-    {{!-- Seção de Recursos --}}
     <section id="features" class="features-section">
         <h2>Recursos Inteligentes</h2>
         <div class="features-grid">
@@ -93,7 +82,6 @@
         </div>
     </section>
 
-    {{!-- Seção de Planos --}}
     <section id="plans" class="plans-section">
         <h2>Escolha seu Plano</h2>
         <div class="plans-grid">
@@ -131,16 +119,13 @@
         </div>
     </section>
 
-    {{!-- Seção de Autenticação (Login/Cadastro) --}}
     <section id="auth" class="auth-section">
          <div class="auth-container glassmorphic-card">
              <div class="auth-tabs">
-                 {{!-- Botões de Tab com data-tab para JS --}}
                  <button class="tab-button active" data-tab="login">Entrar</button>
                  <button class="tab-button" data-tab="register">Cadastrar</button>
              </div>
 
-             {{!-- Formulário de Login com ID para JS --}}
              <div id="login" class="auth-form active">
                  <h2>Entrar</h2>
                  <form>
@@ -157,7 +142,6 @@
                  <p class="quick-links"><a href="#">Esqueci minha senha</a> | <a href="#">Ajuda</a></p>
              </div>
 
-             {{!-- Formulário de Cadastro com ID para JS --}}
              <div id="register" class="auth-form">
                  <h2>Cadastrar</h2>
                  <form>
@@ -188,7 +172,6 @@
         <p>&copy; 2025 CYPHERX. Todos os direitos reservados.</p>
     </footer>
 
-    {{!-- A tag da SDK do Supabase já está no head --}}
-    <script src="script.js"></script> {{!-- Seu script.js no final do body --}}
+    <script src="script.js"></script>
 </body>
 </html>
