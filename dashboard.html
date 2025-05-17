@@ -8,8 +8,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@403;500;600;700&display=swap" rel="stylesheet">
-     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     {{!-- A tag da SDK do Supabase também pode ficar aqui no head, ou antes do fechamento do body --}}
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="dashboard-body">
 
@@ -17,7 +18,7 @@
         <nav>
             <div class="logo">CYPHERX</div>
             <ul class="nav-links">
-                 <li><a href="index.html">Início</a></li>
+                <li><a href="index.html">Início</a></li>
                 <li><a href="#settings">Configurações</a></li>
                 <li><a href="#" id="logout-button">Sair</a></li> {{!-- Adicionado ID para o JS --}}
             </ul>
@@ -25,75 +26,118 @@
     </header>
 
     <section class="dashboard-content">
+        {{!-- A estrutura principal do dashboard pode ser um flex container ou grid para controlar o layout --}}
+        {{!-- Exemplo: display: flex; flex-wrap: wrap; justify-content: space-between; --}}
+
         <aside class="sidebar glassmorphic-card">
-            <h2>Olá, Usuário!</h2> <div class="user-settings">
-                 <h3>Configurações Rápidas</h3>
-                 <div class="setting-item">
+            {{!-- Conteúdo da Sidebar --}}
+            <h2>Olá, Usuário!</h2>
+            <div class="user-settings">
+                <h3>Configurações Rápidas</h3>
+                <div class="setting-item">
                     <span>Notificações</span>
                     <label class="switch">
-                      <input type="checkbox" checked>
-                      <span class="slider round"></span>
+                        <input type="checkbox" checked>
+                        <span class="slider round"></span>
                     </label>
-                 </div>
-                  <div class="setting-item">
+                </div>
+                <div class="setting-item">
                     <span>Modo Noturno</span>
                     <label class="switch">
-                      <input type="checkbox" checked>
-                      <span class="slider round"></span>
+                        <input type="checkbox" checked>
+                        <span class="slider round"></span>
+                    <span class="slider round"></span>
                     </label>
-                 </div>
-                 </div>
-             <div class="user-metrics">
-                 <h3>Métricas Rápidas</h3>
-                 <p>Banca: <span class="math-inline"><span id\="dashBanca"\>\-\-</span\></p\>
-<p\>Rentabilidade\: <span id\="dashRentabilidade"\>\-\-</span\></p\>
-</div\>
-</aside\>
-<main class\="main\-dashboard\-area"\>
-<div class\="operation\-panel glassmorphic\-card"\>
-<h2\>Painel de Operação</h2\>
-<div class\="operation\-guidance"\>
-<p\>Próxima Ação Sugerida\:</p\>
-<h3 id\="nextAction"\>Aguarde a Análise\.\.\.</h3\> <p\>Valor Recomendado\:</p\>
-<span class\="recommended\-value" id\="recommendedValue"\></span> --</span> </div>
+                </div>
+            </div>
+            <div class="user-metrics">
+                <h3>Métricas Rápidas</h3>
+                {{!-- IDs para as métricas globais usadas no script.js --}}
+                <p>Banca Atual: <span id="bancaAtual">--</span></p> {{!-- Corrigido ID e label --}}
+                <p>Rentabilidade Global: <span id="rentabilidadeGlobal">--</span></p> {{!-- Corrigido ID e label --}}
+                <p>Meta de Lucro: <span id="metaLucro">--</span></p> {{!-- Adicionado ID para Meta de Lucro --}}
+                <p>Reserva de Capital: <span id="reservaCapital">--</span></p> {{!-- Adicionado ID para Reserva de Capital --}}
+                {{!-- TODO: Adicionar um elemento para a última atualização se necessário --}}
+                <p>Última Atualização: <span id="lastUpdate">--</span></p> {{!-- Mantido ID se usado --}}
+            </div>
+        </aside>
+
+        <main class="main-dashboard-area">
+            {{!-- Mensagem para quando settings são necessárias (inicialmente oculta via CSS) --}}
+            <div id="settings-required-message" class="glassmorphic-card" style="display: none; padding: 20px; text-align: center;">
+                <h2>Bem-vindo ao CYPHERX!</h2>
+                <p>Por favor, salve suas configurações iniciais na seção abaixo para começar a operar.</p>
+                <p><i class="fas fa-arrow-down"></i> Role para baixo para encontrar as Configurações.</p>
+            </div>
+
+            <div class="operation-panel glassmorphic-card">
+                <h2>Painel de Operação</h2>
+                <div class="operation-guidance">
+                    <p>Próxima Ação Sugerida:</p>
+                    <h3 id="nextAction">Aguarde a Análise...</h3>
+                    <p>Valor Recomendado:</p>
+                    {{!-- O span com a ID recommendedValue será atualizado pelo JS --}}
+                    <span class="recommended-value" id="recommendedValue">--</span>
+                </div>
 
                 <div class="operation-status">
-                     <div class="progress-indicator"></div>
-                     <p id="statusText">Analisando mercado...</p> </div>
+                    {{!-- <div class="progress-indicator"></div> TODO: Implementar visualmente o indicador de progresso --}}
+                    {{!-- O p com a ID statusText será atualizado pelo JS (ex: C1/L1/E1) --}}
+                    <p id="statusText">Analisando mercado...</p>
+                </div>
 
                 <div class="performance-indicators">
-                    <h3>Performance Atual</h3>
+                    <h3>Performance Atual do Dia</h3> {{!-- Ajuste no label --}}
                     <div class="indicators-grid">
-                         <div><p>Entradas Hoje:</p><span id="entriesToday">--</span></div>
-                         <div><p>Wins Hoje:</p><span class="positive" id="winsToday">--</span></div>
-                         <div><p>Losses Hoje:</p><span class="negative" id="lossesToday">--</span></div>
-                         <div><p>Payout (%):</p><span id="currentPayout">--%</span></div>
-                         </div>
+                        {{!-- IDs para os contadores do dia usados no script.js --}}
+                        <div><p>Entradas:</p><span id="entriesToday">--</span></div>
+                        <div><p>Wins:</p><span class="positive" id="winsToday">--</span></div>
+                        <div><p>Losses:</p><span class="negative" id="lossesToday">--</span></div>
+                        {{!-- ID para o payout atual usado no script.js --}}
+                        <div><p>Payout (%):</p><span id="currentPayout">--%</span></div>
+                    </div>
                 </div>
 
-                 <button class="btn btn-primary start-operation">Iniciar Análise</button>
-                 <p class="important-note">Mantenha a calma e siga as sugestões.</p>
+                {{!-- BOTÕES DE OPERAÇÃO --}}
+                <div class="operation-buttons">
+                    {{!-- Botão para iniciar a análise/operação --}}
+                    <button class="btn btn-primary start-operation">Iniciar Análise</button>
+
+                    {{!-- Botões de resultado (inicialmente desabilitados via JS) --}}
+                    {{!-- Adicionados IDs para o script.js interagir --}}
+                    <button class="btn btn-success" id="win-button" disabled>WIN</button>
+                    <button class="btn btn-danger" id="loss-button" disabled>LOSS</button>
+                    <button class="btn btn-secondary" id="draw-button" disabled>DRAW</button> {{!-- Opcional: Botão de DRAW --}}
                 </div>
+
+                <p class="important-note">Mantenha a calma e siga as sugestões.</p>
+            </div>
 
             <div class="dashboard-sections">
+                {{!-- Seção Histórico de Trades --}}
                 <div class="section glassmorphic-card">
                     <h2>Histórico de Trades</h2>
-                    <p>Implementação do histórico...</p>
+                    {{!-- TODO: Implementar a lista de trades aqui --}}
+                    <div id="trades-history-list">
+                        <p>Carregando histórico...</p>
+                        {{!-- Trades serão adicionados aqui pelo JavaScript --}}
+                    </div>
                 </div>
 
-                 <div class="section glassmorphic-card" id="settings">
+                {{!-- Seção Configurações do App --}}
+                <div class="section glassmorphic-card" id="settings">
                     <h2>Configurações do App</h2>
-                     <form>
+                    <form>
                         <div class="form-group">
                             <label for="bancaInicial">Banca Inicial</label>
                             <input type="number" id="bancaInicial" value="1000" step="0.01">
                         </div>
                         <div class="form-group">
-                             <label for="payout">Payout (%)</label>
+                            <label for="payout">Payout (%)</label>
                             <input type="number" id="payout" value="85" step="1">
                         </div>
                         <div class="form-group">
-                             <label for="modoOperacao">Modo de Operação</label>
+                            <label for="modoOperacao">Modo de Operação</label>
                             <select id="modoOperacao">
                                 <option value="conservador">Conservador</option>
                                 <option value="equilibrado" selected>Equilibrado</option>
@@ -101,34 +145,34 @@
                                 <option value="extremo">Extremo</option>
                             </select>
                         </div>
-                         <div class="form-group">
-                             <label for="moedas">Moeda</label>
+                        <div class="form-group">
+                            <label for="moedas">Moeda</label>
                             <select id="moedas">
                                 <option value="BRL" selected>Real (BRL)</option>
                                 <option value="USD">Dólar (USD)</option>
                                 <option value="EUR">Euro (EUR)</option>
                             </select>
                         </div>
-                         <div class="form-group">
-                             <label for="valores">Exibir Valores</label>
+                        <div class="form-group">
+                            <label for="valores">Exibir Valores</label>
                             <select id="valores">
                                 <option value="original" selected>Original</option>
                                 <option value="arredondado">Arredondado</option>
                             </select>
                         </div>
                         <button type="submit" class="btn btn-primary">Salvar Configurações</button>
-                     </form>
-                 </div>
+                    </form>
+                </div>
             </div>
 
         </main>
     </section>
 
-     <footer>
+    <footer>
         <p>&copy; 2025 CYPHERX. Todos os direitos reservados.</p>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    {{!-- A tag da SDK do Supabase já está no head --}}
     <script src="script.js"></script>
 </body>
 </html>
