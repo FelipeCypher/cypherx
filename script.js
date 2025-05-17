@@ -1,7 +1,5 @@
 // Substitua pelos seus dados do projeto Supabase
-// Copie o 'Project URL' da página Data API no Supabase
 const SUPABASE_URL = 'https://vlxuudjpxlnihyvxchmp.supabase.co';
-// Copie a chave 'anon' (Public) da seção Project API keys na página Data API
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZseHV1ZGpweGxuaWh5dnhjaG1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4ODM1NzAsImV4cCI6MjA2MjQ1OTU3MH0.p2aSzw1i3S9MqSFgsOvQpwz2_TbH4LSwF87WodGZB0M';
 
 // Use um nome diferente para a instância do cliente para evitar conflito com a variável global 'supabase' da SDK
@@ -14,7 +12,6 @@ document.addEventListener('DOMContentLoaded', async () => { // Use async pois va
 
      // Função para verificar o status de autenticação e redirecionar
     async function checkAuthAndRedirect() {
-        // Use supabaseClient aqui
         const { data: { session } } = await supabaseClient.auth.getSession();
         const currentPath = window.location.pathname;
 
@@ -50,25 +47,55 @@ document.addEventListener('DOMContentLoaded', async () => { // Use async pois va
 
 
     // --- Autenticação (Tabs) ---
-    // (Mantém a lógica de tabs visual do código anterior)
     const tabButtons = document.querySelectorAll('.auth-tabs .tab-button');
     const authForms = document.querySelectorAll('.auth-form');
 
-    tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            // Remove active class from all buttons and forms
-            tabButtons.forEach(btn => btn.classList.remove('active'));
-            authForms.forEach(form => form.classList.remove('active'));
+    // --- DEBUG: Verifique no console se os elementos foram encontrados ---
+    console.log("DEBUG: Found tab buttons:", tabButtons.length, tabButtons);
+    console.log("DEBUG: Found auth forms:", authForms.length, authForms);
+    // --- FIM DEBUG ---
 
-            const targetTab = button.getAttribute('data-tab');
-            button.classList.add('active');
-            document.getElementById(targetTab).classList.add('active');
+
+    // Apenas configure a lógica de tabs se os botões e formulários forem encontrados
+    if (tabButtons.length > 0 && authForms.length > 0) {
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Remove active class from all buttons and forms
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                authForms.forEach(form => form.classList.remove('active'));
+
+                // Add active class to the clicked button and corresponding form
+                const targetTab = button.getAttribute('data-tab');
+                button.classList.add('active');
+                const targetForm = document.getElementById(targetTab);
+                 if (targetForm) { // Garante que o formulário com a ID alvo existe
+                    targetForm.classList.add('active');
+                 } else {
+                     console.error(`DEBUG: Target form with ID '${targetTab}' not found.`);
+                 }
+            });
         });
-    });
 
-    // Initially show the login form if on index.html
-    if (document.getElementById('login')) {
-         document.getElementById('login').classList.add('active');
+        // Lógica para exibir o formulário de login por padrão (apenas na página index)
+        // Garante que todos começam escondidos (via CSS) e apenas o login é mostrado inicialmente
+        if (window.location.pathname.includes('/index.html')) {
+             const loginForm = document.getElementById('login');
+             if (loginForm) {
+                 loginForm.classList.add('active');
+             } else {
+                 console.error("DEBUG: Login form with ID 'login' not found on index page.");
+             }
+              // Garante que o botão de login também apareça ativo
+             const loginTabButton = document.querySelector('.auth-tabs .tab-button[data-tab="login"]');
+             if(loginTabButton) {
+                 loginTabButton.classList.add('active');
+             }
+        }
+
+
+    } else {
+        console.error("DEBUG: Tab buttons or auth forms not found in the DOM. Check HTML selectors (.auth-tabs .tab-button, .auth-form) and structure.");
     }
 
 
@@ -92,7 +119,6 @@ document.addEventListener('DOMContentLoaded', async () => { // Use async pois va
             } else {
                 console.log("Login bem-sucedido:", data);
                 // Redirecionar para o dashboard após login bem-sucedido
-                // checkAuthAndRedirect() também fará isso na próxima carga de página, mas podemos fazer direto:
                  window.location.href = 'dashboard.html';
             }
         });
@@ -114,8 +140,6 @@ document.addEventListener('DOMContentLoaded', async () => { // Use async pois va
             }
 
             // Chamada real ao Supabase para cadastro - Use supabaseClient aqui
-            // Note: o Supabase Auth por padrão envia email de confirmação.
-            // Você pode desabilitar isso nas configurações do Supabase Auth > Settings
             const { data, error } = await supabaseClient.auth.signUp({
                 email: email,
                 password: password,
@@ -136,7 +160,6 @@ document.addEventListener('DOMContentLoaded', async () => { // Use async pois va
                 // Se a confirmação estiver habilitada, data.user será null e o usuário receberá um email
                  if (data.user) {
                      alert("Cadastro realizado com sucesso! Você já está logado.");
-                      // checkAuthAndRedirect() também fará isso
                      window.location.href = 'dashboard.html'; // Redireciona se logado automaticamente
                  } else {
                      alert("Cadastro realizado! Verifique seu e-mail para confirmar sua conta.");
