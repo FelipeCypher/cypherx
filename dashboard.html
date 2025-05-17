@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@403;500;600;700&display=swap" rel="stylesheet">
      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    {{!-- A tag da SDK do Supabase também pode ficar aqui no head, ou antes do fechamento do body --}}
 </head>
 <body class="dashboard-body">
 
@@ -18,7 +19,8 @@
             <ul class="nav-links">
                  <li><a href="index.html">Início</a></li>
                 <li><a href="#settings">Configurações</a></li>
-                <li><a href="#logout">Sair</a></li> </ul>
+                <li><a href="#" id="logout-button">Sair</a></li> {{!-- Adicionado ID para o JS --}}
+            </ul>
         </nav>
     </header>
 
@@ -43,18 +45,17 @@
                  </div>
              <div class="user-metrics">
                  <h3>Métricas Rápidas</h3>
-                 <p>Banca: $<span id="dashBanca">--</span></p>
-                 <p>Rentabilidade: <span id="dashRentabilidade">--</span></p>
-                 </div>
-        </aside>
-
-        <main class="main-dashboard-area">
-            <div class="operation-panel glassmorphic-card">
-                <h2>Painel de Operação</h2>
-                <div class="operation-guidance">
-                    <p>Próxima Ação Sugerida:</p>
-                    <h3 id="nextAction">Aguarde a Análise...</h3> <p>Valor Recomendado:</p>
-                    <span class="recommended-value" id="recommendedValue">$ --</span> </div>
+                 <p>Banca: <span class="math-inline"><span id\="dashBanca"\>\-\-</span\></p\>
+<p\>Rentabilidade\: <span id\="dashRentabilidade"\>\-\-</span\></p\>
+</div\>
+</aside\>
+<main class\="main\-dashboard\-area"\>
+<div class\="operation\-panel glassmorphic\-card"\>
+<h2\>Painel de Operação</h2\>
+<div class\="operation\-guidance"\>
+<p\>Próxima Ação Sugerida\:</p\>
+<h3 id\="nextAction"\>Aguarde a Análise\.\.\.</h3\> <p\>Valor Recomendado\:</p\>
+<span class\="recommended\-value" id\="recommendedValue"\></span> --</span> </div>
 
                 <div class="operation-status">
                      <div class="progress-indicator"></div>
@@ -127,5 +128,7 @@
         <p>&copy; 2025 CYPHERX. Todos os direitos reservados.</p>
     </footer>
 
-    <script src="script.js"></script> </body>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js"></script>
+</body>
 </html>
