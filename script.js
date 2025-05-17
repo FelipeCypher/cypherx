@@ -4,7 +4,8 @@ const SUPABASE_URL = 'https://vlxuudjpxlnihyvxchmp.supabase.co';
 // Copie a chave 'anon' (Public) da seção Project API keys na página Data API
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZseHV1ZGpweGxuaWh5dnhjaG1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4ODM1NzAsImV4cCI6MjA2MjQ1OTU3MH0.p2aSzw1i3S9MqSFgsOvQpwz2_TbH4LSwF87WodGZB0M';
 
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Use um nome diferente para a instância do cliente para evitar conflito com a variável global 'supabase' da SDK
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 
 document.addEventListener('DOMContentLoaded', async () => { // Use async pois vamos fazer chamadas await
@@ -13,7 +14,8 @@ document.addEventListener('DOMContentLoaded', async () => { // Use async pois va
 
      // Função para verificar o status de autenticação e redirecionar
     async function checkAuthAndRedirect() {
-        const { data: { session } } = await supabase.auth.getSession();
+        // Use supabaseClient aqui
+        const { data: { session } } = await supabaseClient.auth.getSession();
         const currentPath = window.location.pathname;
 
         console.log("Checking auth status. Session:", session);
@@ -58,7 +60,6 @@ document.addEventListener('DOMContentLoaded', async () => { // Use async pois va
             tabButtons.forEach(btn => btn.classList.remove('active'));
             authForms.forEach(form => form.classList.remove('active'));
 
-            // Add active class to the clicked button and corresponding form
             const targetTab = button.getAttribute('data-tab');
             button.classList.add('active');
             document.getElementById(targetTab).classList.add('active');
@@ -79,8 +80,8 @@ document.addEventListener('DOMContentLoaded', async () => { // Use async pois va
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
 
-            // Chamada real ao Supabase para login
-            const { data, error } = await supabase.auth.signInWithPassword({
+            // Chamada real ao Supabase para login - Use supabaseClient aqui
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
               email: email,
               password: password,
             });
@@ -112,10 +113,10 @@ document.addEventListener('DOMContentLoaded', async () => { // Use async pois va
                  return; // Para a execução se as senhas não batem
             }
 
-            // Chamada real ao Supabase para cadastro
+            // Chamada real ao Supabase para cadastro - Use supabaseClient aqui
             // Note: o Supabase Auth por padrão envia email de confirmação.
             // Você pode desabilitar isso nas configurações do Supabase Auth > Settings
-            const { data, error } = await supabase.auth.signUp({
+            const { data, error } = await supabaseClient.auth.signUp({
                 email: email,
                 password: password,
                  options: {
@@ -153,7 +154,8 @@ document.addEventListener('DOMContentLoaded', async () => { // Use async pois va
          logoutButton.addEventListener('click', async (event) => { // Use async
              event.preventDefault();
 
-             const { error } = await supabase.auth.signOut();
+             // Use supabaseClient aqui
+             const { error } = await supabaseClient.auth.signOut();
 
              if (error) {
                  console.error("Erro no logout:", error);
@@ -212,7 +214,8 @@ document.addEventListener('DOMContentLoaded', async () => { // Use async pois va
 
     // Função para carregar configurações do usuário do Supabase
     async function loadUserSettings() {
-         const { data: { session } } = await supabase.auth.getSession();
+         // Use supabaseClient aqui
+         const { data: { session } } = await supabaseClient.auth.getSession();
          if (!session) {
              console.log("Usuário não logado, não é possível carregar configurações.");
              return; // Sai da função se não há sessão
@@ -221,8 +224,8 @@ document.addEventListener('DOMContentLoaded', async () => { // Use async pois va
          const userId = session.user.id;
          console.log("Loading settings for user ID:", userId);
 
-         // Busca as configurações para o usuário logado na tabela 'settings'
-         const { data, error } = await supabase
+         // Busca as configurações para o usuário logado na tabela 'settings' - Use supabaseClient aqui
+         const { data, error } = await supabaseClient
             .from('settings')
             .select('*')
             .eq('user_id', userId) // Filtra pelo ID do usuário logado
@@ -259,6 +262,7 @@ document.addEventListener('DOMContentLoaded', async () => { // Use async pois va
     function updateOperationPanel() {
         // !! A LÓGICA COMPLETA DE CÁLCULO, GERENCIAMENTO DE CICLOS/NÍVEIS
         // !! E BUSCA DE DADOS DE TRADES DO SUPABASE IRIA AQUI !!
+        // !! ISSO ENVOLVERIA USAR supabaseClient.from('trades')... !!
 
         // Exemplo de dados MOCKADOS (apenas para layout)
         const nextAction = "Aguardando Análise...";
@@ -288,6 +292,7 @@ document.addEventListener('DOMContentLoaded', async () => { // Use async pois va
         updateOperationPanel(); // Popula o painel com placeholders ou dados iniciais
          // !! ADICIONAR AQUI CHAMADAS PARA CARREGAR HISTÓRICO DE TRADES, MÉTRICAS GLOBAIS ETC. !!
          // !! ESTAS TAMBÉM PRECISARÃO BUSCAR DADOS DO SUPABASE RELACIONADOS AO USUÁRIO LOGADO !!
+         // !! E USAR supabaseClient.from(...) !!
     }
 
 
@@ -297,7 +302,8 @@ document.addEventListener('DOMContentLoaded', async () => { // Use async pois va
         settingsForm.addEventListener('submit', async (event) => { // Use async
             event.preventDefault();
 
-            const { data: { session } } = await supabase.auth.getSession();
+            // Use supabaseClient aqui
+            const { data: { session } } = await supabaseClient.auth.getSession();
              if (!session) {
                  alert("Erro: Usuário não logado para salvar configurações.");
                  return;
@@ -323,9 +329,9 @@ document.addEventListener('DOMContentLoaded', async () => { // Use async pois va
             }
 
 
-            // Salva/Atualiza as configurações no Supabase usando UPSERT
+            // Salva/Atualiza as configurações no Supabase usando UPSERT - Use supabaseClient aqui
             // UPSERT irá inserir se user_id não existir, ou atualizar se existir.
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('settings')
                 .upsert(
                     {
@@ -361,6 +367,7 @@ document.addEventListener('DOMContentLoaded', async () => { // Use async pois va
              // !! ADICIONAR LÓGICA PARA COMEÇAR O CICLO DE OPERAÇÕES AQUI !!
              // !! ESTA LÓGICA LERÁ AS CONFIGURAÇÕES SALVAS NO SUPABASE (USANDO loadUserSettings() por exemplo) !!
              // !! E SALVARÁ O ESTADO DA OPERAÇÃO (tabela 'trades' ou similar) NO BD SUPABASE !!
+             // !! ISSO ENVOLVERÁ USAR supabaseClient.from(...) !!
         });
      }
 
@@ -370,6 +377,5 @@ document.addEventListener('DOMContentLoaded', async () => { // Use async pois va
     // (Ex: lógica para botões WIN/LOSS, cálculo de métricas em tempo real, histórico de trades etc.)
     // A lógica de WIN/LOSS também precisará interagir com o BD Supabase para salvar o resultado da trade
     // e atualizar o estado do ciclo/nível.
-
-
+    // ISSO ENVOLVERÁ USAR supabaseClient.from(...)
 });
