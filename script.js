@@ -1,6 +1,6 @@
 // Substitua pelos seus dados do projeto Supabase
 const SUPABASE_URL = 'https://vlxuudjpxlnihyvxchmp.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZseHV1ZGpweGxuaWh5dnhjaG1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4ODM1NzAsImexcCI6MjA2MjQ1OTU3MH0.p2aSzw1i3S9MqSFgsOvQpwz2_TbH4LSwF87WodGZB0M';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZseHV1ZGpweGxuaWh5dnhjaG1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4ODM1NzAsImV4cCI6MjA2MjQ1OTU3MH0.p2aSzw1i3S9MqSFgsOvQpwz2_TbH4LSwF87WodGZB0M';
 
 // Use um nome diferente para a instância do cliente para evitar conflito com a variável global 'supabase' da SDK
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -15,6 +15,7 @@ let lastTradeResult = null; // Resultado do último trade ('Win', 'Loss', 'Draw'
 let currentEntryValue = 0; // Valor da entrada atual (o que será recomendado para a próxima operação)
 let valorPorCicloCalculado = 0; // Armazena o Valor por Ciclo calculado das settings
 let currentBalance = 0; // Armazena o saldo atual da banca (será carregado dos trades)
+let currentTradeId = null; // Armazena o ID do trade atual se ele for salvo como 'Pending' antes do resultado
 
 // --- FUNÇÃO: Função para carregar as configurações do usuário ---
 async function loadUserSettings(userId) {
@@ -46,11 +47,23 @@ async function loadUserSettings(userId) {
 // --- FIM FUNÇÃO loadUserSettings ---
 
 // --- FUNÇÃO: Salvar um Trade na Tabela 'trades' ---
+// Esta função agora pode INSERIR um novo trade ou ATUALIZAR um trade existente (se currentTradeId estiver definido)
 async function saveTrade(tradeData) {
     console.log('Attempting to save trade:', tradeData);
-    const { data, error } = await supabaseClient
-        .from('trades')
-        .insert([tradeData]); // Insere um novo registro
+
+    let query = supabaseClient.from('trades');
+
+    if (currentTradeId) {
+        // Se já temos um ID de trade (salvo como 'Pending'), vamos ATUALIZAR esse registro
+        console.log('Updating existing trade with ID:', currentTradeId);
+        query = query.update(tradeData).eq('id', currentTradeId);
+    } else {
+        // Se não temos um ID, vamos INSERIR um novo registro
+        console.log('Inserting new trade record.');
+        query = query.insert([tradeData]);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         console.error('Erro ao salvar trade:', error);
@@ -58,10 +71,30 @@ async function saveTrade(tradeData) {
         return false; // Indica falha
     } else {
         console.log('Trade salvo com sucesso:', data);
+        // Se foi uma inserção, armazena o ID do novo trade (útil se quiser salvar 'Pending' primeiro)
+        if (!currentTradeId && data && data.length > 0) {
+             currentTradeId = data[0].id; // Armazena o ID do trade recém-criado
+             console.log('New trade ID assigned:', currentTradeId);
+        }
         return true; // Indica sucesso
     }
 }
 // --- FIM FUNÇÃO saveTrade ---
+
+
+// --- FUNÇÃO: Habilitar/Desabilitar Botões de Operação ---
+function toggleOperationButtons(enableResults) {
+    const startOperationButton = document.querySelector('.start-operation');
+    const winButton = document.getElementById('win-button'); // TODO: Adicionar IDs no HTML
+    const lossButton = document.getElementById('loss-button'); // TODO: Adicionar IDs no HTML
+    const drawButton = document.getElementById('draw-button'); // TODO: Adicionar IDs no HTML (se aplicável)
+
+    if (startOperationButton) startOperationButton.disabled = enableResults; // Desabilita se resultados estão habilitados
+    if (winButton) winButton.disabled = !enableResults; // Habilita se enableResults é true
+    if (lossButton) lossButton.disabled = !enableResults; // Habilita se enableResults é true
+    if (drawButton) drawButton.disabled = !enableResults; // Habilita se enableResults é true
+}
+// --- FIM FUNÇÃO toggleOperationButtons ---
 
 
 // --- FUNÇÃO: Função para calcular e atualizar as métricas e o painel de operação ---
@@ -90,15 +123,7 @@ async function updateOperationPanel() {
         if (settingsMessage) settingsMessage.style.display = 'block';
 
         // Desabilitar botões de operação se não há settings
-        // TODO: Adicionar IDs aos botões WIN/LOSS/DRAW no HTML
-        // const winButton = document.getElementById('win-button');
-        // const lossButton = document.getElementById('loss-button');
-        // const drawButton = document.getElementById('draw-button');
-        // if (winButton) winButton.disabled = true;
-        // if (lossButton) lossButton.disabled = true;
-        // if (drawButton) drawButton.disabled = true;
-        const startOperationButton = document.querySelector('.start-operation');
-        if (startOperationButton) startOperationButton.disabled = false; // Habilitar Iniciar Análise se não há settings
+        toggleOperationButtons(false); // Desabilita botões de resultado, habilita Iniciar Análise
 
         return; // Sai da função se não há settings
     }
@@ -114,7 +139,7 @@ async function updateOperationPanel() {
     // Busca todos os trades do usuário, ordenados do mais recente para o mais antigo
     const { data: trades, error: tradesError } = await supabaseClient
         .from('trades')
-        .select('profit_loss, balance_after, created_at, result, cycle_step, entry_value') // Seleciona colunas úteis
+        .select('id, profit_loss, balance_after, created_at, result, cycle_step, entry_value') // Incluído 'id' e 'entry_value'
         .eq('user_id', currentUserSettings.user_id)
         .order('created_at', { ascending: false }); // Ordena para pegar o último trade facilmente
 
@@ -128,7 +153,9 @@ async function updateOperationPanel() {
         totalWinsToday = 0;
         totalLossesToday = 0;
         lastTradeResult = null;
-        // O estado da gestão (cycle, level, entry) permanecerá como está (provavelmente 0,0,0 ou o último estado calculado)
+        currentCycle = 0; currentLevel = 0; currentEntry = 0; // Resetar estado da gestão
+        currentEntryValue = 0;
+        currentTradeId = null; // Reseta ID do trade atual
         // A UI será atualizada com estes fallbacks.
     } else {
         // --- Calcular Métricas Globais com dados de Trades ---
@@ -152,6 +179,7 @@ async function updateOperationPanel() {
             // Baseado no ÚLTIMO trade registrado
             const lastTrade = trades[0];
             lastTradeResult = lastTrade.result; // Atualiza a variável de estado global
+            currentTradeId = lastTrade.id; // Armazena o ID do último trade (útil se ele estiver 'Pending')
 
             // !! TODO: Lógica para parsear lastTrade.cycle_step (ex: "C1L2E3") para atualizar
             // as variáveis de estado globais: currentCycle, currentLevel, currentEntry
@@ -160,17 +188,33 @@ async function updateOperationPanel() {
             console.log("Último trade encontrado:", lastTrade);
             console.log("Resultado do último trade:", lastTradeResult);
             console.log("Último cycle_step:", lastTrade.cycle_step);
+            console.log("ID do último trade:", currentTradeId);
             // Exemplo BEM SIMPLIFICADO (substituir pela lógica real de parse):
-            // if (lastTrade.cycle_step) {
-            //     const parts = lastTrade.cycle_step.match(/C(\d+)L(\d+)E(\d+)/);
-            //     if (parts) {
-            //         currentCycle = parseInt(parts[1], 10);
-            //         currentLevel = parseInt(parts[2], 10);
-            //         currentEntry = parseInt(parts[3], 10);
-            //     }
-            // }
-            // currentEntryValue = lastTrade.entry_value; // Pode ser útil armazenar o valor da última entrada
-            // console.log(`Estado derivado do último trade: C${currentCycle} L${currentLevel} E${currentEntry}`);
+            if (lastTrade.cycle_step) {
+                 const parts = lastTrade.cycle_step.match(/C(\d+)L(\d+)E(\d+)/);
+                 if (parts) {
+                     currentCycle = parseInt(parts[1], 10);
+                     currentLevel = parseInt(parts[2], 10);
+                     currentEntry = parseInt(parts[3], 10);
+                 }
+            }
+            currentEntryValue = lastTrade.entry_value; // Armazena o valor da última entrada como o valor ATUAL para o próximo cálculo
+
+            // !! TODO: Verificar se o ÚLTIMO trade está 'Pending' ou sem resultado
+            // Se estiver, significa que há uma operação em andamento.
+            // Manter botões de resultado habilitados e Iniciar Análise desabilitado.
+            // Se o último trade tiver resultado (Win/Loss/Draw), a operação anterior foi concluída.
+            // A lógica de cálculo do próximo passo abaixo determinará o que fazer (continuar ou iniciar novo ciclo).
+            const isOperationPending = (lastTrade.result === null || lastTrade.result === 'Pending'); // Assumindo que você pode salvar 'Pending'
+            if (isOperationPending) {
+                 toggleOperationButtons(true); // Habilita botões de resultado
+                 console.log("Operação em andamento detectada. Botões de resultado habilitados.");
+            } else {
+                 // A operação anterior foi concluída. A lógica abaixo determinará o próximo estado.
+                 // Os botões serão atualizados depois que o próximo estado for calculado.
+                 console.log("Última operação concluída.");
+            }
+
 
         } else {
             // Se não há trades, a banca atual é a inicial e a rentabilidade é 0.
@@ -181,8 +225,13 @@ async function updateOperationPanel() {
             totalWinsToday = 0;
             totalLossesToday = 0;
             lastTradeResult = null; // Reinicia o resultado do último trade
-            // As variáveis de estado currentCycle, currentLevel, currentEntry permanecem com seus valores iniciais (0,0,0)
-            // ou o último estado calculado antes desta chamada, até que "Iniciar Análise" seja clicado.
+            currentCycle = 0; currentLevel = 0; currentEntry = 0; // Reseta estado da gestão
+            currentEntryValue = 0;
+            currentTradeId = null; // Reseta ID do trade atual
+
+            // Se não há trades, a operação não foi iniciada.
+            toggleOperationButtons(false); // Desabilita botões de resultado, habilita Iniciar Análise
+            console.log("Nenhum trade encontrado. Botão 'Iniciar Análise' habilitado.");
         }
     }
 
@@ -212,7 +261,7 @@ async function updateOperationPanel() {
     });
 
 
-    // --- 4. Calcular o Próximo Valor Recomendado (baseado no estado e regras) ---
+    // --- 4. Calcular o Próximo Valor Recomendado e Estado (baseado no estado e regras) ---
     // Esta lógica dependerá do estado atual (currentCycle, currentLevel, currentEntry) e lastTradeResult.
     // Se não houver trades (primeiro acesso) OU se o último trade encerrou um ciclo/período,
     // o próximo valor é a Entrada Inicial do novo ciclo.
@@ -226,8 +275,13 @@ async function updateOperationPanel() {
     // baseada no lastTradeResult e no estado derivado do último trade.
     // Use as regras de valor de entrada (x2.17, x1.25, etc.) e as regras de avanço de nível/ciclo.
     // Esta é a parte mais complexa da sua lógica de gestão.
-    // Se (não há trades) OU (o último trade encerrou um ciclo/período):
-    if (trades === null || trades.length === 0 || /* TODO: Adicionar condição de encerramento de ciclo/período aqui */ ) {
+
+    // Exemplo: Se não há trades OU se o último trade encerrou um ciclo/período:
+    // TODO: Adicionar a condição REAL de encerramento de ciclo/período aqui
+    const hasNoTrades = (trades === null || trades.length === 0);
+    const lastTradeEndedCycle = false; // TODO: Implementar lógica para verificar se o último trade encerrou um ciclo
+
+    if (hasNoTrades || lastTradeEndedCycle) {
          recommendedValue = valorPorCicloCalculado * 0.315; // Entrada Inicial
          currentEntryValue = recommendedValue; // Armazena na variável de estado
          currentCycle = 1; // Inicia o Ciclo 1
@@ -236,37 +290,83 @@ async function updateOperationPanel() {
          statusText = "Pronto para iniciar o Ciclo 1, Nível 1.";
          nextAction = "Analisar...";
          lastTradeResult = null; // Reseta o resultado do último trade
+         currentTradeId = null; // Reseta o ID do trade atual ao iniciar um novo ciclo
          console.log("Estado Definido: C1L1E1 (Início)");
+
+         // Habilitar botão Iniciar Análise, desabilitar botões de resultado
+         toggleOperationButtons(false);
 
     } else {
         // !! TODO: Implementar lógica para calcular recommendedValue, nextAction, statusText e atualizar
         // currentCycle, currentLevel, currentEntry, currentEntryValue
         // baseada no lastTradeResult e nas suas regras de gestão.
+        // Use as regras de valor de entrada (x2.17, x1.25, etc.) e as regras de avanço de nível/ciclo.
+        // Lembre-se que currentCycle, currentLevel, currentEntry e lastTradeResult já foram atualizados
+        // com base no último trade buscado no início desta função.
+
         console.log("Calculando próximo valor e estado com base nas regras e último resultado.");
 
         // Exemplo PLACEHOLDER (precisa ser substituído pela sua lógica real):
         // if (lastTradeResult === 'Win') {
         //     // Lógica para WIN (avançar entrada/nível ou encerrar nível)
-        //     currentEntry++; // Exemplo: avança entrada
-        //     recommendedValue = currentEntryValue * 1.25; // Exemplo: regra WIN
-        //     statusText = `Continuando: C${currentCycle} / L${currentLevel} / E${currentEntry}`;
-        //     nextAction = "Analisar...";
+        //     // Verificar se 2 Wins no nível -> encerrar nível, ir para próximo nível ou ciclo
+        //     nextRecommendedValue = currentEntryValue * 1.25; // Exemplo da regra
+        //     nextEntry++; // Exemplo: avança entrada
+        //     // TODO: Lógica para avançar nível (nextLevel) ou ciclo (nextCycle) se necessário
         // } else if (lastTradeResult === 'Loss') {
         //     // Lógica para LOSS (Martingale ou avançar nível/ciclo)
-        //     currentEntry++; // Exemplo: avança entrada
-        //     recommendedValue = currentEntryValue * 2.17; // Exemplo: regra LOSS
-        //     statusText = `Continuando: C${currentCycle} / L${currentLevel} / E${currentEntry}`;
-        //     nextAction = "Analisar...";
-        // } else { // Draw ou outro estado
-        //     // Lógica para DRAW ou outros casos
-        //     recommendedValue = currentEntryValue; // Mantém o valor
-        //     statusText = `Continuando: C${currentCycle} / L${currentLevel} / E${currentEntry}`;
-        //     nextAction = "Analisar...";
+        //     // Verificar 2 Losses consecutivos no ciclo -> encerrar ciclo
+        //     nextRecommendedValue = currentEntryValue * 2.17; // Exemplo da regra
+        //     nextEntry++; // Exemplo: avança entrada
+        //     // TODO: Lógica para avançar nível (nextLevel) ou ciclo (nextCycle) se necessário
+        // } else { // Draw
+        //    // Lógica para DRAW
+        //    nextRecommendedValue = currentEntryValue; // Mantém o valor
+        //    nextEntry++; // Exemplo: avança entrada (ou não, dependendo da regra DRAW)
         // }
-         recommendedValue = 0; // <-- Substituir pelo cálculo real
-         currentEntryValue = recommendedValue; // Atualiza a variável de estado
+
+        // !! TODO: Lógica de encerramento de Nível/Ciclo e início do próximo, ou fim do período !!
+        // Se o resultado do trade anterior (lastTradeResult) encerrou um nível ou ciclo,
+        // ajuste currentCycle, currentLevel, currentEntry e currentEntryValue para o início do próximo passo.
+
+         // PLACEHOLDERS - SUBSTITUIR PELA LÓGICA REAL
+         recommendedValue = currentEntryValue; // <-- Substituir pelo cálculo real
          statusText = `Continuando no C${currentCycle} / L${currentLevel} / E${currentEntry}`; // <-- Atualizar status real
          nextAction = "Analisar..."; // <-- Pode mudar
+
+         // !! TODO: Lógica para verificar Stop Win / Stop Loss APÓS calcular o próximo passo !!
+         // Se rentabilidadeGlobal >= metaDeLucro (Stop Win) ou se atingiu condição de Stop Loss (ex: 2 losses consecutivos no ciclo)
+         // Mostrar mensagem de Stop, desabilitar botões de operação, habilitar botão de "Iniciar Novo Período" (se aplicável).
+         const stopWinReached = (rentabilidadeGlobal >= metaDeLucro);
+         const stopLossReached = false; // TODO: Implementar lógica para verificar Stop Loss
+
+         if (stopWinReached) {
+             statusText = "STOP WIN ATINGIDO!";
+             nextAction = "Fim do Período"; // Ou "Iniciar Novo Período"
+             recommendedValue = 0; // Não há valor recomendado após Stop
+             toggleOperationButtons(false); // Desabilita botões de resultado
+             const startOperationButton = document.querySelector('.start-operation');
+             if (startOperationButton) startOperationButton.disabled = false; // Habilita Iniciar Análise (se for para iniciar novo período)
+             console.log("STOP WIN ATINGIDO!");
+         } else if (stopLossReached) {
+             statusText = "STOP LOSS ATINGIDO!";
+             nextAction = "Fim do Período"; // Ou "Iniciar Novo Período"
+             recommendedValue = 0; // Não há valor recomendado após Stop
+             toggleOperationButtons(false); // Desabilita botões de resultado
+             const startOperationButton = document.querySelector('.start-operation');
+             if (startOperationButton) startOperationButton.disabled = false; // Habilita Iniciar Análise (se for para iniciar novo período)
+             console.log("STOP LOSS ATINGIDO!");
+         } else {
+             // Se não atingiu Stop, e a operação não está pendente, manter botões de resultado habilitados
+             // A menos que a lógica do próximo passo indique encerramento de nível/ciclo que exija ação do usuário.
+             // Por enquanto, se não atingiu Stop e não é início, mantém botões de resultado habilitados.
+              const isOperationPending = (lastTradeResult === null || lastTradeResult === 'Pending'); // Verificar se o trade anterior estava pendente
+              if (!isOperationPending) { // Se o trade anterior teve resultado, a operação continua
+                   toggleOperationButtons(true); // Habilita botões de resultado para o próximo trade
+              }
+         }
+
+
     }
 
 
@@ -319,14 +419,153 @@ async function updateOperationPanel() {
 
     // Lógica para o indicador de progresso (se existir na UI) também usaria essas métricas (Meta vs Rentabilidade)
 
-    // !! TODO: Lógica para verificar Stop Win / Stop Loss !!
-    // Se rentabilidadeGlobal >= metaDeLucro (Stop Win) ou se atingiu condição de Stop Loss (ex: 2 losses consecutivos no ciclo)
-    // Mostrar mensagem de Stop, desabilitar botões de operação, habilitar botão de "Iniciar Novo Período" (se aplicável).
-
 
     // TODO: Lógica para carregar e exibir o histórico de trades em uma lista na UI (chamada aqui ou em função separada)
 }
 // --- FIM FUNÇÃO updateOperationPanel ---
+
+
+// --- FUNÇÃO: Processar o Resultado de um Trade ---
+async function processTradeResult(result) {
+    console.log(`Processando resultado: ${result}`);
+
+    if (!currentUserSettings || currentEntryValue <= 0 || currentCycle === 0) {
+        console.error("Não é possível processar trade: Configurações ausentes ou operação não iniciada.");
+        alert("Erro: Não foi possível processar o trade. Verifique as configurações e inicie a análise.");
+        // Desabilitar botões de resultado e reabilitar "Iniciar Análise" em caso de erro grave
+        toggleOperationButtons(false);
+        return;
+    }
+
+    const userId = currentUserSettings.user_id;
+    const payoutPercent = currentUserSettings.payout_percent;
+    const entryValue = currentEntryValue; // Valor que foi usado nesta entrada
+    const currentCycleStep = `C${currentCycle}L${currentLevel}E${currentEntry}`; // Passo da gestão atual ANTES de avançar
+
+    // !! TODO: Obter o Par e a Direção (Higher/Lower) da UI se o usuário os seleciona !!
+    const tradePair = "Par Exemplo"; // <-- Substituir por valor real da UI
+    const tradeDirection = "Direção Exemplo"; // <-- Substituir por valor real da UI
+
+
+    // --- 1. Calcular Lucro/Prejuízo ---
+    let profitLoss = 0;
+    if (result === 'Win') {
+        // Lucro = Valor de Entrada * (Payout / 100)
+        profitLoss = entryValue * (payoutPercent / 100);
+    } else if (result === 'Loss') {
+        // Prejuízo = -Valor de Entrada
+        profitLoss = -entryValue;
+    } else { // Draw
+        // Draw = 0 Lucro/Prejuízo
+        profitLoss = 0;
+    }
+    console.log(`Trade: ${result}, Valor: ${entryValue.toFixed(2)}, Payout: ${payoutPercent}%, Profit/Loss: ${profitLoss.toFixed(2)}`);
+
+
+    // --- 2. Calcular Novo Saldo da Banca ---
+    // Precisamos do saldo ATUAL antes de adicionar o profit/loss.
+    // A variável global currentBalance já deve ter sido atualizada pela última chamada de updateOperationPanel.
+    const newBalanceAfter = currentBalance + profitLoss;
+    console.log(`Saldo Anterior: ${currentBalance.toFixed(2)}, Profit/Loss: ${profitLoss.toFixed(2)}, Novo Saldo: ${newBalanceAfter.toFixed(2)}`);
+
+    // Atualiza a variável de estado global do saldo
+    // currentBalance = newBalanceAfter; // Esta atualização será feita DENTRO de updateOperationPanel ao recarregar os trades
+
+
+    // --- 3. Preparar Dados para Salvar o Trade ---
+    const tradeDataToSave = {
+        user_id: userId,
+        // created_at: será gerado automaticamente pelo BD com now()
+        pair: tradePair, // <-- Usar valor real da UI
+        direction: tradeDirection, // <-- Usar valor real da UI
+        entry_value: entryValue,
+        payout_percent: payoutPercent,
+        result: result, // 'Win', 'Loss', ou 'Draw'
+        profit_loss: profitLoss,
+        balance_after: newBalanceAfter, // Salva o saldo após este trade
+        cycle_step: currentCycleStep // Ex: "C1L1E1"
+    };
+    console.log("Dados do trade para salvar:", tradeDataToSave);
+
+
+    // --- 4. Salvar o Trade no Supabase ---
+    // Se currentTradeId estiver definido (trade 'Pending'), saveTrade vai atualizar.
+    // Se não, saveTrade vai inserir e definir currentTradeId (se quisermos salvar 'Pending' primeiro).
+    // Como estamos salvando o trade COMPLETO com resultado aqui, currentTradeId provavelmente será null
+    // e saveTrade fará uma INSERÇÃO.
+    const saveSuccess = await saveTrade(tradeDataToSave);
+
+    if (!saveSuccess) {
+        // Se falhou ao salvar, alertar o usuário e NÃO avançar na lógica de gestão.
+        console.error("Falha ao salvar o trade. A lógica de gestão não avançará.");
+        alert("Erro ao registrar o trade. Por favor, tente novamente.");
+        // Manter botões de resultado habilitados para que o usuário possa tentar novamente ou corrigir.
+        // TODO: Adicionar um estado de erro na UI
+        return; // Para a execução se falhou ao salvar
+    }
+
+    // --- 5. Lógica de Gestão: Calcular o Próximo Passo e Valor ---
+    // !! TODO: Implementar as regras de cálculo do PRÓXIMO valor e determinação do PRÓXIMO cycle_step
+    // baseada no 'result' deste trade, no 'currentCycleStep' (antes de avançar), e nas suas regras de gestão.
+    // Esta é a parte mais complexa que você descreveu (regras de x2.17, x1.25, avanço de nível/ciclo, encerramento).
+    console.log("Calculando próximo passo da gestão...");
+
+    let nextCycle = currentCycle;
+    let nextLevel = currentLevel;
+    let nextEntry = currentEntry; // Começa igual ao atual, será incrementado/resetado pela lógica
+    let nextRecommendedValue = 0;
+
+    // !! TODO: Substituir esta lógica placeholder pelas suas regras reais !!
+    // Use as variáveis globais currentCycle, currentLevel, currentEntry (o estado ANTES deste trade)
+    // e o 'result' deste trade para calcular o PRÓXIMO estado (nextCycle, nextLevel, nextEntry)
+    // e o PRÓXIMO valor recomendado (nextRecommendedValue).
+
+    // Exemplo da lógica de avanço de entrada:
+    nextEntry = currentEntry + 1; // Avança para a próxima entrada por padrão
+
+    // Exemplo da lógica de cálculo de valor baseado no resultado:
+    // if (result === 'Win') {
+    //     // Lógica para WIN (avançar entrada/nível ou encerrar nível)
+    //     // Verificar se 2 Wins no nível -> encerrar nível, ir para próximo nível ou ciclo
+    //     nextRecommendedValue = entryValue * 1.25; // Exemplo da regra
+    // } else if (result === 'Loss') {
+    //     // Lógica para LOSS (Martingale ou avançar nível/ciclo)
+    //     // Verificar 2 Losses consecutivos no ciclo -> encerrar ciclo
+    //     nextRecommendedValue = entryValue * 2.17; // Exemplo da regra
+    // } else { // Draw
+    //    // Lógica para DRAW
+    //    nextRecommendedValue = entryValue; // Mantém o valor
+    // }
+
+    // !! TODO: Lógica de encerramento de Nível/Ciclo e início do próximo, ou fim do período !!
+    // Se o resultado deste trade encerrou um nível ou ciclo, ajuste nextCycle, nextLevel, nextEntry
+    // e recalcule nextRecommendedValue de acordo com as regras de avanço (fórmulas de Nível 2/3 ou início de novo ciclo).
+
+
+    // --- 6. Atualizar Variáveis de Estado Globais para o Próximo Passo ---
+    currentCycle = nextCycle;
+    currentLevel = nextLevel;
+    currentEntry = nextEntry;
+    currentEntryValue = nextRecommendedValue; // O valor recomendado para a PRÓXIMA operação
+    lastTradeResult = result; // Armazena o resultado deste trade para o PRÓXIMO cálculo
+    currentTradeId = null; // Reseta o ID do trade atual, pois este trade foi concluído
+
+
+    // --- 7. Chamar updateOperationPanel para Recarregar Dados e Atualizar UI ---
+    // Isso buscará os trades novamente (incluindo o que acabamos de salvar),
+    // recalculará as métricas globais (Banca, Rentabilidade, Contadores),
+    // e atualizará o painel com o novo estado e valor calculados.
+    await updateOperationPanel();
+
+    // !! TODO: Lógica para verificar Stop Win / Stop Loss APÓS calcular o próximo passo !!
+    // updateOperationPanel já faz uma verificação básica de Stop Win/Loss e habilita/desabilita botões.
+    // Você pode precisar refinar essa lógica em updateOperationPanel ou adicionar verificações adicionais aqui.
+
+
+    console.log(`Próximo passo calculado: C${currentCycle} L${currentLevel} E${currentEntry}. Próximo Valor: ${currentEntryValue.toFixed(2)}`);
+
+}
+// --- FIM FUNÇÃO processTradeResult ---
 
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -532,7 +771,41 @@ document.addEventListener('DOMContentLoaded', async () => {
             // !! TODO: Verificar se já existe uma operação em andamento para o usuário hoje
             // (Pode ser verificando o último trade do dia que ainda não tem resultado 'Win'/'Loss'/'Draw')
             // Se já houver, carregar o estado dessa operação em andamento em vez de iniciar uma nova.
-            // Por enquanto, sempre iniciamos um novo ciclo/nível/entrada.
+            // updateOperationPanel já faz essa verificação ao carregar.
+            // Se updateOperationPanel habilitou os botões de resultado, não devemos iniciar uma nova análise.
+            // Podemos verificar o estado dos botões de resultado ou uma flag interna.
+
+            // Uma maneira mais robusta: verificar o estado interno da gestão ou o último trade
+            // Se currentCycle > 0 e o último trade não encerrou um ciclo, a operação já está em andamento.
+            // TODO: Refinar esta verificação para ser mais precisa com base no estado da gestão.
+            const { data: latestTrades, error: latestTradesError } = await supabaseClient
+                 .from('trades')
+                 .select('result')
+                 .eq('user_id', currentUserSettings.user_id)
+                 .order('created_at', { ascending: false })
+                 .limit(1);
+
+            let isOperationAlreadyStarted = false;
+            if (latestTrades && latestTrades.length > 0) {
+                 const lastResult = latestTrades[0].result;
+                 // Consideramos em andamento se o último trade não teve resultado final (Win/Loss/Draw)
+                 // ou se ele teve resultado mas NÃO encerrou um ciclo/período.
+                 // TODO: Adicionar lógica para verificar se o lastResult encerrou um ciclo/período
+                 const lastTradeEndedCycle = false; // Placeholder
+                 if (lastResult === null || lastResult === 'Pending' || !lastTradeEndedCycle) {
+                      isOperationAlreadyStarted = true;
+                 }
+            }
+
+
+            if (isOperationAlreadyStarted) {
+                 alert("Já existe uma operação em andamento. Conclua o trade atual ou reinicie o período.");
+                 console.log("Operação já em andamento. Não iniciando nova análise.");
+                 // Garantir que os botões corretos estão habilitados/desabilitados
+                 toggleOperationButtons(true); // Habilita botões de resultado
+                 return;
+            }
+
 
             // --- Lógica para iniciar o PRIMEIRO trade do dia/ciclo ---
             // Usa o Valor por Ciclo calculado em updateOperationPanel (armazenado em valorPorCicloCalculado)
@@ -542,8 +815,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentCycle = 1;
             currentLevel = 1;
             currentEntry = 1;
-            currentEntryValue = firstEntryValue; // Armazena o valor da entrada atual
-            lastTradeResult = null; // Reseta o resultado do último trade ao iniciar
+            currentEntryValue = firstEntryValue; // Armazena o valor da entrada atual para a próxima operação
+            lastTradeResult = null; // Reseta o resultado do último trade ao iniciar um novo período/ciclo
+            currentTradeId = null; // Reseta o ID do trade atual
 
             console.log(`Iniciando: Ciclo ${currentCycle}, Nível ${currentLevel}, Entrada ${currentEntry}. Valor recomendado: ${currentEntryValue.toFixed(2)}`);
 
@@ -558,27 +832,37 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (recommendedValueEl) recommendedValueEl.textContent = `${moedaSimbolo} ${currentEntryValue.toFixed(2)}`;
             if (statusTextEl) statusTextEl.textContent = `C${currentCycle} / L${currentLevel} / E${currentEntry}`; // Formato C1/L1/E1
 
-            // !! TODO: Habilitar botões WIN/LOSS/DRAW e desabilitar "Iniciar Análise" !!
-            // Isso indica que uma operação está em andamento e esperando o resultado.
-            // Ex: document.getElementById('win-button').disabled = false;
-            // Ex: startOperationButton.disabled = true;
-             const winButton = document.getElementById('win-button');
-             const lossButton = document.getElementById('loss-button');
-             const drawButton = document.getElementById('draw-button'); // Se tiver botão de DRAW
-
-             if (winButton) winButton.disabled = false;
-             if (lossButton) lossButton.disabled = false;
-             if (drawButton) drawButton.disabled = false; // Se tiver botão de DRAW
-             if (startOperationButton) startOperationButton.disabled = true;
-
+            // Habilitar botões WIN/LOSS/DRAW e desabilitar "Iniciar Análise"
+            toggleOperationButtons(true);
 
             // !! TODO: Opcional: Salvar um registro inicial na tabela 'trades' para esta operação
             // antes mesmo de saber o resultado. Pode ser um registro com resultado 'Pending' ou null.
             // Isso ajudaria a carregar o estado em andamento se o usuário sair e voltar.
-            // const { data, error } = await supabaseClient.from('trades').insert({...});
-            // Lembre-se de incluir user_id, created_at, pair (se já souber), direction (se já souber), entry_value, cycle_step.
-            // profit_loss e balance_after seriam atualizados DEPOIS que o resultado for conhecido.
-
+            // Se você optar por salvar 'Pending', precisará capturar o ID retornado pela inserção
+            // e armazená-lo em currentTradeId para poder ATUALIZAR o registro depois com o resultado.
+            // Exemplo (se decidir salvar 'Pending'):
+            // const pendingTradeData = {
+            //     user_id: currentUserSettings.user_id,
+            //     pair: "Aguardando", // ou um valor padrão
+            //     direction: "Aguardando", // ou um valor padrão
+            //     entry_value: currentEntryValue,
+            //     payout_percent: currentUserSettings.payout_percent,
+            //     result: 'Pending', // ou null
+            //     balance_after: currentBalance, // Saldo ANTES desta operação
+            //     cycle_step: `C${currentCycle}L${currentLevel}E${currentEntry}`
+            // };
+            // const { data: newTrade, error: newTradeError } = await supabaseClient.from('trades').insert([pendingTradeData]).select('id'); // Usar .select('id') para pegar o ID
+            // if (newTradeError) {
+            //      console.error("Erro ao salvar trade pendente:", newTradeError);
+            //      alert("Erro ao iniciar operação. Não foi possível salvar o trade inicial.");
+            //      // TODO: Lidar com falha (desabilitar botões de resultado, reabilitar Iniciar Análise)
+            //      toggleOperationButtons(false); // Desabilita botões de resultado
+            //      return; // Interrompe o processo
+            // }
+            // if (newTrade && newTrade.length > 0) {
+            //     currentTradeId = newTrade[0].id; // Armazena o ID do trade pendente
+            //     console.log("Trade pendente salvo com ID:", currentTradeId);
+            // }
         });
     }
 
@@ -616,139 +900,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
 
-    // --- FUNÇÃO: Processar o Resultado de um Trade ---
-    async function processTradeResult(result) {
-        console.log(`Processando resultado: ${result}`);
-
-        if (!currentUserSettings || currentEntryValue <= 0 || currentCycle === 0) {
-            console.error("Não é possível processar trade: Configurações ausentes ou operação não iniciada.");
-            alert("Erro: Não foi possível processar o trade. Verifique as configurações e inicie a análise.");
-            // TODO: Desabilitar botões de resultado e reabilitar "Iniciar Análise" em caso de erro grave
-            return;
-        }
-
-        const userId = currentUserSettings.user_id;
-        const payoutPercent = currentUserSettings.payout_percent;
-        const entryValue = currentEntryValue; // Valor que foi usado nesta entrada
-        const currentCycleStep = `C${currentCycle}L${currentLevel}E${currentEntry}`; // Passo da gestão atual
-
-        // !! TODO: Obter o Par e a Direção (Higher/Lower) da UI se o usuário os seleciona !!
-        const tradePair = "Par Exemplo"; // <-- Substituir por valor real da UI
-        const tradeDirection = "Direção Exemplo"; // <-- Substituir por valor real da UI
-
-
-        // --- 1. Calcular Lucro/Prejuízo ---
-        let profitLoss = 0;
-        if (result === 'Win') {
-            // Lucro = Valor de Entrada * (Payout / 100)
-            profitLoss = entryValue * (payoutPercent / 100);
-        } else if (result === 'Loss') {
-            // Prejuízo = -Valor de Entrada
-            profitLoss = -entryValue;
-        } else { // Draw
-            // Draw = 0 Lucro/Prejuízo
-            profitLoss = 0;
-        }
-        console.log(`Trade: ${result}, Valor: ${entryValue.toFixed(2)}, Payout: ${payoutPercent}%, Profit/Loss: ${profitLoss.toFixed(2)}`);
-
-
-        // --- 2. Calcular Novo Saldo da Banca ---
-        // Precisamos do saldo ATUAL antes de adicionar o profit/loss.
-        // A variável global currentBalance já deve ter sido atualizada pela última chamada de updateOperationPanel.
-        const newBalanceAfter = currentBalance + profitLoss;
-        console.log(`Saldo Anterior: ${currentBalance.toFixed(2)}, Profit/Loss: ${profitLoss.toFixed(2)}, Novo Saldo: ${newBalanceAfter.toFixed(2)}`);
-
-        // Atualiza a variável de estado global do saldo
-        currentBalance = newBalanceAfter;
-
-
-        // --- 3. Preparar Dados para Salvar o Trade ---
-        const tradeDataToSave = {
-            user_id: userId,
-            // created_at: será gerado automaticamente pelo BD com now()
-            pair: tradePair, // <-- Usar valor real da UI
-            direction: tradeDirection, // <-- Usar valor real da UI
-            entry_value: entryValue,
-            payout_percent: payoutPercent,
-            result: result, // 'Win', 'Loss', ou 'Draw'
-            profit_loss: profitLoss,
-            balance_after: newBalanceAfter,
-            cycle_step: currentCycleStep // Ex: "C1L1E1"
-        };
-        console.log("Dados do trade para salvar:", tradeDataToSave);
-
-
-        // --- 4. Salvar o Trade no Supabase ---
-        const saveSuccess = await saveTrade(tradeDataToSave);
-
-        if (!saveSuccess) {
-            // Se falhou ao salvar, talvez alertar o usuário e não avançar na gestão?
-            console.error("Falha ao salvar o trade. A lógica de gestão não avançará.");
-            alert("Erro ao registrar o trade. Por favor, tente novamente.");
-            // TODO: Lidar com falha no salvamento (ex: não recalcular próximo passo)
-            return; // Para a execução se falhou ao salvar
-        }
-
-        // --- 5. Lógica de Gestão: Calcular o Próximo Passo e Valor ---
-        // !! TODO: Implementar as regras de cálculo do PRÓXIMO valor e determinação do PRÓXIMO cycle_step
-        // baseada no 'result' deste trade, no 'currentCycleStep' (antes de avançar), e nas suas regras de gestão.
-        // Esta é a parte mais complexa que você descreveu (regras de x2.17, x1.25, avanço de nível/ciclo, encerramento).
-        console.log("Calculando próximo passo da gestão...");
-
-        let nextCycle = currentCycle;
-        let nextLevel = currentLevel;
-        let nextEntry = currentEntry + 1; // Exemplo simples: avança entrada por padrão
-        let nextRecommendedValue = 0;
-
-        // !! TODO: Substituir esta lógica placeholder pelas suas regras reais !!
-        // Exemplo:
-        // if (result === 'Win') {
-        //     // Lógica para WIN: calcular nextRecommendedValue, nextCycle, nextLevel, nextEntry
-        //     // Verificar se 2 Wins no nível -> encerrar nível, ir para próximo nível ou ciclo
-        //     nextRecommendedValue = entryValue * 1.25; // Exemplo da regra
-        // } else if (result === 'Loss') {
-        //     // Lógica para LOSS: calcular nextRecommendedValue, nextCycle, nextLevel, nextEntry
-        //     // Verificar 2 Losses consecutivos no ciclo -> encerrar ciclo
-        //     nextRecommendedValue = entryValue * 2.17; // Exemplo da regra
-        // } else { // Draw
-        //    // Lógica para DRAW
-        //    nextRecommendedValue = entryValue; // Mantém o valor
-        // }
-
-        // !! TODO: Lógica de encerramento de Nível/Ciclo e início do próximo, ou fim do período !!
-        // Se o resultado deste trade encerrou um nível ou ciclo, ajuste nextCycle, nextLevel, nextEntry e nextRecommendedValue de acordo com as regras de avanço (fórmulas de Nível 2/3 ou início de novo ciclo).
-
-
-        // --- 6. Atualizar Variáveis de Estado Globais para o Próximo Passo ---
-        currentCycle = nextCycle;
-        currentLevel = nextLevel;
-        currentEntry = nextEntry;
-        currentEntryValue = nextRecommendedValue; // O valor recomendado para a PRÓXIMA operação
-        lastTradeResult = result; // Armazena o resultado deste trade para o PRÓXIMO cálculo
-
-
-        // --- 7. Chamar updateOperationPanel para Recarregar Dados e Atualizar UI ---
-        // Isso buscará os trades novamente (incluindo o que acabamos de salvar),
-        // recalculará as métricas globais, e atualizará o painel com o novo estado e valor.
-        await updateOperationPanel();
-
-        // !! TODO: Habilitar/Desabilitar botões de operação/início de acordo com o novo estado
-        // Se atingiu Stop Win/Loss ou fim de período, desabilitar botões de resultado e habilitar "Iniciar Novo Período" (se aplicável).
-        // Se não atingiu Stop, manter botões de resultado habilitados e "Iniciar Análise" desabilitado.
-
-        console.log(`Próximo passo calculado: C${currentCycle} L${currentLevel} E${currentEntry}. Próximo Valor: ${currentEntryValue.toFixed(2)}`);
-
-    }
-    // --- FIM FUNÇÃO processTradeResult ---
-
-
     // --- TODO: Lógica para exibir Histórico de Trades ---
     // Criar uma função para buscar os trades do usuário na tabela 'trades' e popular uma lista na UI.
     // Esta função seria chamada ao carregar o dashboard e após cada novo trade ser salvo.
 
 }); // Fim do DOMContentLoaded
 
-// Nota: As variáveis de estado e as funções loadUserSettings, saveTrade, updateOperationPanel, processTradeResult
+// Nota: As variáveis de estado e as funções loadUserSettings, saveTrade, toggleOperationButtons, updateOperationPanel, processTradeResult
 // são definidas no escopo do DOMContentLoaded listener. Isso significa que elas só são acessíveis DENTRO deste listener
 // e de funções definidas DENTRO dele. Para a estrutura atual, onde os listeners dos botões (WIN/LOSS/DRAW) estão DENTRO
 // deste listener, a configuração atual das variáveis de estado e funções deve funcionar.
