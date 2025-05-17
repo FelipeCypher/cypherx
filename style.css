@@ -10,7 +10,13 @@
     --card-border-color: rgba(255, 255, 255, 0.1);
     --glass-blur: 10px;
     --border-radius: 12px;
-    --button-border-radius: 25px;
+    --button-border-radius: 25px; /* Botões mais arredondados */
+    --padding-section: 6rem 2rem; /* Padding padrão para seções */
+    --max-width-content: 1200px; /* Largura máxima para o conteúdo principal */
+
+    /* Novas variáveis para efeitos neon/brilho */
+    --neon-glow-color: #39FF14; /* Verde Neon */
+    --hover-glow-color: rgba(57, 255, 20, 0.5); /* Brilho no hover */
 }
 
 /* Reset básico */
@@ -26,37 +32,55 @@ body {
     color: var(--text-color);
     line-height: 1.6;
     overflow-x: hidden; /* Evita scroll horizontal */
-}
-
-.dashboard-body {
+    min-height: 100vh; /* Garante que o corpo ocupa a altura total da viewport */
     display: flex;
-    flex-direction: column;
-    min-height: 100vh;
+    flex-direction: column; /* Permite que o footer seja empurrado para baixo */
 }
 
+/* Efeito Neon no Logo */
+.logo {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--neon-glow-color); /* Cor base neon */
+    text-decoration: none;
+    /* Adiciona o efeito de sombra para o neon */
+    text-shadow: 0 0 5px var(--neon-glow-color),
+                 0 0 10px var(--neon-glow-color),
+                 0 0 20px var(--neon-glow-color),
+                 0 0 40px rgba(57, 255, 20, 0.5), /* Sombra mais espalhada */
+                 0 0 80px rgba(57, 255, 20, 0.3);
+    animation: pulse-neon 1.5s infinite alternate; /* Animação sutil de pulso */
+}
+
+@keyframes pulse-neon {
+    from {
+        text-shadow: 0 0 5px var(--neon-glow-color), 0 0 10px var(--neon-glow-color), 0 0 20px var(--neon-glow-color), 0 0 40px rgba(57, 255, 20, 0.5), 0 0 80px rgba(57, 255, 20, 0.3);
+    }
+    to {
+        text-shadow: 0 0 6px var(--neon-glow-color), 0 0 12px var(--neon-glow-color), 0 0 25px var(--neon-glow-color), 0 0 50px rgba(57, 255, 20, 0.6), 0 0 100px rgba(57, 255, 20, 0.4);
+    }
+}
+
+
+/* Header */
 header {
-    background-color: rgba(0, 0, 0, 0.5); /* Fundo semi-transparente para o header */
+    background-color: rgba(0, 0, 0, 0.7); /* Fundo semi-transparente para o header */
     backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur)); /* Suporte Safari */
     padding: 1rem 2rem;
-    position: fixed;
+    position: fixed; /* Header fixo no topo */
     width: 100%;
     top: 0;
     left: 0;
-    z-index: 1000;
+    z-index: 1000; /* Garante que o header fique acima de outros elementos */
 }
 
 nav {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
-.logo {
-    font-size: 1.8rem;
-    font-weight: 700;
-    color: var(--primary-action-color);
+    max-width: var(--max-width-content); /* Limita a largura da navegação */
+    margin: 0 auto; /* Centraliza a navegação */
 }
 
 .nav-links {
@@ -73,11 +97,30 @@ nav {
     text-decoration: none;
     font-weight: 500;
     transition: color 0.3s ease;
+    position: relative; /* Necessário para o efeito de brilho na seta */
 }
 
 .nav-links a:hover {
     color: var(--primary-action-color);
 }
+
+/* Efeito de brilho na seta ao passar o mouse nos links de navegação */
+.nav-links a::after {
+    content: '>'; /* Seta simples, pode ser um ícone ou SVG */
+    position: absolute;
+    right: -15px; /* Posição da seta */
+    top: 50%;
+    transform: translateY(-50%);
+    color: transparent; /* Inicialmente transparente */
+    text-shadow: none; /* Remove sombra neon se herdada */
+    transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+.nav-links a:hover::after {
+    color: var(--hover-glow-color); /* Cor da seta ao hover */
+    text-shadow: 0 0 5px var(--hover-glow-color), 0 0 10px var(--hover-glow-color); /* Efeito de brilho */
+}
+
 
 /* Glassmorphism Effect */
 .glassmorphic-card {
@@ -86,9 +129,37 @@ nav {
     -webkit-backdrop-filter: blur(var(--glass-blur)); /* Suporte Safari */
     border: 1px solid var(--card-border-color);
     border-radius: var(--border-radius);
-    padding: 2rem;
+    padding: 2rem; /* Padding interno padrão para cards */
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    transition: transform 0.3s ease, box-shadow 0.3s ease; /* Transição para efeitos de hover */
+    position: relative; /* Para pseudo-elementos ou efeitos internos */
+    overflow: hidden; /* Esconde partes do efeito de brilho se necessário */
 }
+
+/* Efeito de brilho/leveza no hover dos cards */
+.glassmorphic-card:hover {
+    transform: translateY(-5px); /* Leve levantamento */
+    box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5), 0 0 20px var(--hover-glow-color); /* Sombra e brilho */
+}
+
+/* Opcional: Pseudo-elemento para um efeito de "varredura" de luz no hover */
+.glassmorphic-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%; /* Começa fora do card */
+    width: 50%; /* Largura da "luz" */
+    height: 100%;
+    background: rgba(255, 255, 255, 0.1); /* Cor da luz */
+    transform: skewX(-20deg); /* Inclina a luz */
+    transition: left 0.5s ease;
+    pointer-events: none; /* Garante que o pseudo-elemento não interfira com cliques */
+}
+
+.glassmorphic-card:hover::before {
+    left: 100%; /* Move a luz para fora do outro lado */
+}
+
 
 /* Botões */
 .btn {
@@ -101,8 +172,10 @@ nav {
     font-weight: 600;
     text-decoration: none;
     text-align: center;
-    transition: background-color 0.3s ease, transform 0.1s ease;
+    transition: background-color 0.3s ease, transform 0.1s ease, opacity 0.3s ease, box-shadow 0.3s ease; /* Adicionada transição para box-shadow */
     margin: 0.5rem;
+    position: relative; /* Para efeitos internos */
+    overflow: hidden; /* Esconde efeitos que saem da borda */
 }
 
 .btn-primary {
@@ -111,9 +184,10 @@ nav {
     border: 1px solid var(--primary-action-color);
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) { /* Adicionado :not(:disabled) para hover */
     background-color: hsl(142, 66%, 26%);
     transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(57, 255, 20, 0.4); /* Sombra brilhante no hover */
 }
 
 .btn-secondary {
@@ -122,31 +196,78 @@ nav {
     border: 1px solid var(--text-color);
 }
 
-.btn-secondary:hover {
+.btn-secondary:hover:not(:disabled) { /* Adicionado :not(:disabled) para hover */
     background-color: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.2);
     transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 255, 255, 0.2); /* Sombra sutil no hover */
 }
+
+/* Botões de Resultado (WIN/LOSS/DRAW) */
+.btn-success { /* Botão WIN */
+    background-color: var(--positive-color);
+    color: var(--background-color);
+    border: 1px solid var(--positive-color);
+}
+.btn-success:hover:not(:disabled) {
+    background-color: #218838;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4); /* Sombra brilhante verde */
+}
+
+.btn-danger { /* Botão LOSS */
+    background-color: var(--negative-color);
+    color: var(--background-color);
+    border: 1px solid var(--negative-color);
+}
+.btn-danger:hover:not(:disabled) {
+    background-color: #c82333;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4); /* Sombra brilhante vermelha */
+}
+
+.btn-info { /* Botão DRAW (usando uma cor info/secundária) */
+    background-color: #17a2b8; /* Exemplo de cor azul/ciano */
+    color: var(--background-color);
+    border: 1px solid #17a2b8;
+}
+.btn-info:hover:not(:disabled) {
+    background-color: #138496;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(23, 162, 184, 0.4); /* Sombra brilhante azul */
+}
+
+
+/* Estilos para botões desabilitados */
+.btn:disabled {
+    opacity: 0.3; /* Reduz a opacidade */
+    cursor: not-allowed;
+    transform: none; /* Remove transformação de hover */
+    box-shadow: none; /* Remove sombra de hover */
+}
+
 
 /* Seções da Página Inicial */
 section {
-    padding: 6rem 2rem 4rem; /* Espaço para o header fixo */
+    padding: var(--padding-section); /* Usando variável para padding padrão */
     text-align: center;
-    max-width: 1200px;
+    max-width: var(--max-width-content); /* Centraliza e limita a largura */
     margin: 0 auto;
 }
 
 .hero-section {
-    height: 100vh;
+    min-height: 100vh; /* Ocupa pelo menos a altura da viewport */
     display: flex;
     justify-content: center;
     align-items: center;
-    padding-top: 0; /* Removido padding extra para centralizar na tela */
+    padding-top: 80px; /* Espaço para o header fixo */
+    padding-bottom: 80px; /* Espaço para o header fixo */
 }
 
 .hero-content {
     max-width: 800px;
     padding: 4rem; /* Mais padding para o card central */
+    margin: 0 auto; /* Centraliza o card */
 }
 
 .hero-content h1 {
@@ -166,23 +287,23 @@ section {
     margin: 0 1rem;
 }
 
-/* Painel Dinâmico */
+/* Painel Dinâmico (Métricas na Página Inicial) */
 .dynamic-panel-section {
-     padding-top: 2rem; /* Ajuste de padding */
+     padding-top: 4rem; /* Ajuste de padding */
      padding-bottom: 4rem;
 }
 
 .dynamic-panel {
      max-width: 900px;
      margin: 0 auto;
-     text-align: left;
+     text-align: left; /* Alinha o texto do card à esquerda */
 }
 
 .dynamic-panel h2 {
     font-size: 1.8rem;
     margin-bottom: 1.5rem;
     font-weight: 600;
-    text-align: center;
+    text-align: center; /* Centraliza o título do painel */
 }
 
 .metrics-grid {
@@ -255,8 +376,8 @@ section {
 /* Seção de Planos */
 .plans-section h2 {
      font-size: 2rem;
-    margin-bottom: 3rem;
-    font-weight: 700;
+     margin-bottom: 3rem;
+     font-weight: 700;
 }
 
 .plans-grid {
@@ -271,6 +392,9 @@ section {
     text-align: center;
     width: 300px; /* Largura fixa para os cards */
     position: relative; /* Para posicionar o badge */
+    display: flex; /* Usar flex para organizar o conteúdo do card */
+    flex-direction: column;
+    justify-content: space-between; /* Espalha o conteúdo verticalmente */
 }
 
 .plan-card.highlighted {
@@ -289,6 +413,7 @@ section {
     border-radius: var(--button-border-radius);
     font-size: 0.9rem;
     font-weight: 600;
+    white-space: nowrap; /* Evita quebra de linha no badge */
 }
 
 
@@ -315,6 +440,7 @@ section {
     list-style: none;
     text-align: left;
     margin-bottom: 2rem;
+    flex-grow: 1; /* Permite que a lista de recursos ocupe espaço */
 }
 
 .plan-card ul li {
@@ -327,6 +453,11 @@ section {
     margin-right: 0.5rem;
     color: var(--positive-color); /* Ícones verdes para recursos */
 }
+
+.plan-card .btn {
+    margin-top: auto; /* Empurra o botão para o final do card */
+}
+
 
 /* Autenticação */
 .auth-section {
@@ -457,9 +588,10 @@ footer {
     display: flex;
     gap: 2rem;
     padding: 2rem;
-    max-width: 1400px;
+    max-width: 1400px; /* Aumentado um pouco a largura máxima para o dashboard */
     margin: 0 auto;
     flex-wrap: wrap; /* Permite quebrar em telas menores */
+    flex-grow: 1; /* Permite que o conteúdo do dashboard ocupe o espaço restante */
 }
 
 .sidebar {
@@ -509,61 +641,61 @@ footer {
 
 /* Switch Toggle */
 .switch {
-  position: relative;
-  display: inline-block;
-  width: 40px;
-  height: 24px;
+ position: relative;
+ display: inline-block;
+ width: 40px;
+ height: 24px;
 }
 
 .switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
+ opacity: 0;
+ width: 0;
+ height: 0;
 }
 
 .slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(255, 255, 255, 0.2);
-  transition: .4s;
-   border-radius: 24px;
+ position: absolute;
+ cursor: pointer;
+ top: 0;
+ left: 0;
+ right: 0;
+ bottom: 0;
+ background-color: rgba(255, 255, 255, 0.2);
+ transition: .4s;
+    border-radius: 24px;
 }
 
 .slider:before {
-  position: absolute;
-  content: "";
-  height: 16px;
-  width: 16px;
-  left: 4px;
-  bottom: 4px;
-  background-color: white;
-  transition: .4s;
-   border-radius: 50%;
+ position: absolute;
+ content: "";
+ height: 16px;
+ width: 16px;
+ left: 4px;
+ bottom: 4px;
+ background-color: white;
+ transition: .4s;
+    border-radius: 50%;
 }
 
 input:checked + .slider {
-  background-color: var(--primary-action-color);
+ background-color: var(--primary-action-color);
 }
 
 input:focus + .slider {
-  box-shadow: 0 0 1px var(--primary-action-color);
+ box-shadow: 0 0 1px var(--primary-action-color);
 }
 
 input:checked + .slider:before {
-  transform: translateX(16px);
+ transform: translateX(16px);
 }
 
 /* Round sliders */
 .slider.round {
-  border-radius: 24px;
+ border-radius: 24px;
 }
 
 .slider.round:before {
-  border-radius: 50%;
+ border-radius: 50%;
 }
 
 
@@ -679,30 +811,25 @@ input:checked + .slider:before {
     color: var(--negative-color);
 }
 
-.start-operation {
+/* Botões de Operação (Container) */
+.operation-buttons {
+    display: flex;
+    justify-content: center; /* Centraliza os botões horizontalmente */
+    gap: 1rem; /* Espaçamento entre os botões */
     margin-top: 2rem;
+    flex-wrap: wrap; /* Permite quebrar linha em telas menores */
 }
 
-.btn-positive { /* Botão WIN */
-    background-color: var(--positive-color);
-     color: var(--background-color);
-     border: 1px solid var(--positive-color);
-     margin: 0.5rem;
-}
-.btn-positive:hover {
-    background-color: #218838;
-    transform: translateY(-2px);
+/* Estilo específico para o botão Iniciar Análise dentro do container */
+.operation-buttons .start-operation {
+    margin: 0; /* Remove margem extra se estiver dentro do flex container */
 }
 
-.btn-negative { /* Botão LOSS */
-    background-color: var(--negative-color);
-     color: var(--background-color);
-     border: 1px solid var(--negative-color);
-     margin: 0.5rem;
-}
-.btn-negative:hover {
-    background-color: #c82333;
-    transform: translateY(-2px);
+/* Estilo para os botões WIN/LOSS/DRAW dentro do container */
+.operation-buttons .btn-success,
+.operation-buttons .btn-danger,
+.operation-buttons .btn-info { /* Usando btn-info para DRAW */
+     margin: 0; /* Remove margem extra */
 }
 
 
@@ -731,8 +858,74 @@ input:checked + .slider:before {
     text-align: center;
 }
 
-/* Responsividade Básica */
+/* Estilos para o formulário de configurações no Dashboard */
+.dashboard-sections .section form {
+    max-width: 600px; /* Largura máxima para o formulário de settings */
+    margin: 0 auto; /* Centraliza o formulário */
+}
+/* Reutiliza estilos de form-group, label, input, select do index.html */
+
+
+/* Estilo para a mensagem de configurações necessárias */
+#settings-required-message {
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+#settings-required-message h2 {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+}
+#settings-required-message p {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+#settings-required-message i {
+    font-size: 1.5rem;
+    color: var(--primary-action-color);
+}
+
+
+/* Responsividade */
+@media (max-width: 1024px) {
+    /* Ajustes para telas de tablet e menores */
+    .dashboard-content {
+        flex-direction: column; /* Empilha sidebar e main */
+        gap: 1.5rem;
+        padding: 1.5rem;
+    }
+
+    .sidebar {
+        flex: none; /* Remove largura fixa */
+        width: 100%; /* Ocupa a largura total */
+        min-height: auto; /* Remove altura mínima fixa */
+    }
+
+    .main-dashboard-area {
+         width: 100%; /* Ocupa a largura total */
+    }
+
+    .metrics-grid,
+    .features-grid,
+    .indicators-grid {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* Ajusta colunas para telas menores */
+        gap: 1rem;
+    }
+
+    .operation-buttons {
+        flex-direction: column; /* Empilha botões de operação em telas menores */
+        gap: 10px;
+    }
+
+    .operation-buttons button {
+        width: 100%; /* Botões de operação ocupam a largura total */
+        margin: 0; /* Remove margem para empilhamento */
+    }
+}
+
 @media (max-width: 768px) {
+    /* Ajustes para telas de celular */
     nav {
         flex-direction: column;
         align-items: center;
@@ -757,38 +950,57 @@ input:checked + .slider:before {
     }
 
     .cta-buttons {
-        display: flex;
         flex-direction: column;
         align-items: center;
     }
 
-    .plans-grid {
-        flex-direction: column;
-        align-items: center;
-    }
-
-    .plan-card {
-        width: 90%; /* Ajusta largura em telas menores */
+    .cta-buttons .btn {
+        margin: 0.5rem 0; /* Ajusta margem para botões empilhados */
+        width: 80%; /* Largura para botões em telas pequenas */
         max-width: 300px;
     }
 
-    .dashboard-content {
-        flex-direction: column;
-        padding: 1rem;
+
+    section {
+        padding: 4rem 1rem; /* Reduz padding lateral em telas menores */
     }
 
-    .sidebar {
-        flex: none; /* Remove largura fixa */
-        width: 100%;
+    .hero-content {
+        padding: 2rem; /* Reduz padding do card hero */
     }
 
-    .main-dashboard-area {
-         width: 100%;
+    .dynamic-panel,
+    .auth-container {
+        padding: 1.5rem; /* Reduz padding de cards em telas menores */
+    }
+
+    .dynamic-panel h2,
+    .features-section h2,
+    .plans-section h2,
+    .auth-form h2 {
+        font-size: 1.5rem; /* Reduz tamanho de títulos */
     }
 
      .metrics-grid,
      .features-grid,
+     .plans-grid,
      .indicators-grid {
          grid-template-columns: 1fr; /* Uma coluna em telas pequenas */
+         gap: 1rem;
+     }
+
+     .plan-card {
+         width: 90%; /* Ajusta largura em telas menores */
+         max-width: 300px;
+     }
+
+     .auth-form form {
+         max-width: 100%; /* Formulário ocupa a largura total disponível */
+     }
+
+     .quick-links a {
+         display: block; /* Links rápidos em blocos */
+         margin: 0.3rem 0;
      }
 }
+
