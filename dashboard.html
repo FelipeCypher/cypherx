@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYPHERX - Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@403;500;600;700&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="dashboard-body">
+
+    <header>
+        <nav>
+            <div class="logo">CYPHERX</div>
+            <ul class="nav-links">
+                 <li><a href="index.html">Início</a></li>
+                <li><a href="#settings">Configurações</a></li>
+                <li><a href="#logout">Sair</a></li> </ul>
+        </nav>
+    </header>
+
+    <section class="dashboard-content">
+        <aside class="sidebar glassmorphic-card">
+            <h2>Olá, Usuário!</h2> <div class="user-settings">
+                 <h3>Configurações Rápidas</h3>
+                 <div class="setting-item">
+                    <span>Notificações</span>
+                    <label class="switch">
+                      <input type="checkbox" checked>
+                      <span class="slider round"></span>
+                    </label>
+                 </div>
+                  <div class="setting-item">
+                    <span>Modo Noturno</span>
+                    <label class="switch">
+                      <input type="checkbox" checked>
+                      <span class="slider round"></span>
+                    </label>
+                 </div>
+                 </div>
+             <div class="user-metrics">
+                 <h3>Métricas Rápidas</h3>
+                 <p>Banca: $<span id="dashBanca">--</span></p>
+                 <p>Rentabilidade: <span id="dashRentabilidade">--</span></p>
+                 </div>
+        </aside>
+
+        <main class="main-dashboard-area">
+            <div class="operation-panel glassmorphic-card">
+                <h2>Painel de Operação</h2>
+                <div class="operation-guidance">
+                    <p>Próxima Ação Sugerida:</p>
+                    <h3 id="nextAction">Aguarde a Análise...</h3> <p>Valor Recomendado:</p>
+                    <span class="recommended-value" id="recommendedValue">$ --</span> </div>
+
+                <div class="operation-status">
+                     <div class="progress-indicator"></div>
+                     <p id="statusText">Analisando mercado...</p> </div>
+
+                <div class="performance-indicators">
+                    <h3>Performance Atual</h3>
+                    <div class="indicators-grid">
+                         <div><p>Entradas Hoje:</p><span id="entriesToday">--</span></div>
+                         <div><p>Wins Hoje:</p><span class="positive" id="winsToday">--</span></div>
+                         <div><p>Losses Hoje:</p><span class="negative" id="lossesToday">--</span></div>
+                         <div><p>Payout (%):</p><span id="currentPayout">--%</span></div>
+                         </div>
+                </div>
+
+                 <button class="btn btn-primary start-operation">Iniciar Análise</button>
+                 <p class="important-note">Mantenha a calma e siga as sugestões.</p>
+                </div>
+
+            <div class="dashboard-sections">
+                <div class="section glassmorphic-card">
+                    <h2>Histórico de Trades</h2>
+                    <p>Implementação do histórico...</p>
+                </div>
+
+                 <div class="section glassmorphic-card" id="settings">
+                    <h2>Configurações do App</h2>
+                     <form>
+                        <div class="form-group">
+                            <label for="bancaInicial">Banca Inicial</label>
+                            <input type="number" id="bancaInicial" value="1000" step="0.01">
+                        </div>
+                        <div class="form-group">
+                             <label for="payout">Payout (%)</label>
+                            <input type="number" id="payout" value="85" step="1">
+                        </div>
+                        <div class="form-group">
+                             <label for="modoOperacao">Modo de Operação</label>
+                            <select id="modoOperacao">
+                                <option value="conservador">Conservador</option>
+                                <option value="equilibrado" selected>Equilibrado</option>
+                                <option value="agressivo">Agressivo</option>
+                                <option value="extremo">Extremo</option>
+                            </select>
+                        </div>
+                         <div class="form-group">
+                             <label for="moedas">Moeda</label>
+                            <select id="moedas">
+                                <option value="BRL" selected>Real (BRL)</option>
+                                <option value="USD">Dólar (USD)</option>
+                                <option value="EUR">Euro (EUR)</option>
+                            </select>
+                        </div>
+                         <div class="form-group">
+                             <label for="valores">Exibir Valores</label>
+                            <select id="valores">
+                                <option value="original" selected>Original</option>
+                                <option value="arredondado">Arredondado</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Salvar Configurações</button>
+                     </form>
+                 </div>
+            </div>
+
+        </main>
+    </section>
+
+     <footer>
+        <p>&copy; 2025 CYPHERX. Todos os direitos reservados.</p>
+    </footer>
+
+    <script src="script.js"></script> </body>
+</html>

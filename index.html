@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYPHERX - Gestão Inteligente de Trades</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@403;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <header>
+        <nav>
+            <div class="logo">CYPHERX</div>
+            <ul class="nav-links">
+                <li><a href="#home">Início</a></li>
+                <li><a href="#features">Recursos</a></li>
+                <li><a href="#plans">Planos</a></li>
+                <li><a href="#auth">Entrar/Cadastrar</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section id="home" class="hero-section">
+        <div class="hero-content glassmorphic-card">
+            <h1>Gerencie seus trades com confiança.</h1>
+            <p>Tecnologia de ponta para otimizar suas operações no mercado financeiro.</p>
+            <div class="cta-buttons">
+                <a href="#auth" class="btn btn-primary">Comece Agora</a>
+                <a href="#" class="btn btn-secondary">Ver Demonstração</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="dynamic-panel-section">
+        <div class="dynamic-panel glassmorphic-card">
+            <h2>Métricas Principais</h2>
+            <div class="metrics-grid">
+                <div class="metric-item">
+                    <p>Banca Atual</p>
+                    <span class="metric-value positive">$ <span id="bancaAtual">--</span></span>
+                </div>
+                <div class="metric-item">
+                    <p>Rentabilidade Global</p>
+                    <span class="metric-value" id="rentabilidadeGlobal">--</span>
+                </div>
+                <div class="metric-item">
+                    <p>Meta de Lucro Definida</p>
+                    <span class="metric-value" id="metaLucro">--</span>
+                </div>
+                <div class="metric-item">
+                    <p>Reserva de Capital</p>
+                    <span class="metric-value" id="reservaCapital">--</span>
+                </div>
+            </div>
+            <p class="update-info">Última atualização: <span id="lastUpdate">--</span></p>
+            </div>
+    </section>
+
+    <section id="features" class="features-section">
+        <h2>Recursos Inteligentes</h2>
+        <div class="features-grid">
+            <div class="feature-card glassmorphic-card">
+                <i class="fas fa-chart-line"></i>
+                <h3>Gestão Inteligente de Operações</h3>
+                <p>Receba sugestões otimizadas para suas entradas no mercado.</p>
+            </div>
+            <div class="feature-card glassmorphic-card">
+                <i class="fas fa-signal"></i>
+                <h3>Estatísticas em Tempo Real</h3>
+                <p>Acompanhe seu desempenho com métricas claras e atualizadas.</p>
+            </div>
+            <div class="feature-card glassmorphic-card">
+                <i class="fas fa-brain"></i>
+                <h3>Sugestões Automatizadas</h3>
+                <p>Algoritmo avançado para identificar as melhores oportunidades.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="plans" class="plans-section">
+        <h2>Escolha seu Plano</h2>
+        <div class="plans-grid">
+            <div class="plan-card glassmorphic-card">
+                <h3>Free</h3>
+                <p class="price">R$ 0,00<small>/mês</small></p>
+                <ul>
+                    <li><i class="fas fa-check-circle"></i> Recurso Básico 1</li>
+                    <li><i class="fas fa-check-circle"></i> Recurso Básico 2</li>
+                    <li><i class="fas fa-times-circle"></i> Sem Recurso Premium</li>
+                </ul>
+                <button class="btn btn-secondary">Selecionar</button>
+            </div>
+            <div class="plan-card glassmorphic-card highlighted">
+                <span class="badge">Recomendado</span>
+                <h3>Premium</h3>
+                <p class="price">R$ 49,90<small>/mês</small></p>
+                <ul>
+                    <li><i class="fas fa-check-circle"></i> Todos os Recursos Básicos</li>
+                    <li><i class="fas fa-check-circle"></i> Recurso Premium 1</li>
+                    <li><i class="fas fa-check-circle"></i> Recurso Premium 2</li>
+                </ul>
+                <button class="btn btn-primary">Selecionar</button>
+            </div>
+            <div class="plan-card glassmorphic-card">
+                <h3>Pro</h3>
+                <p class="price">R$ 99,90<small>/mês</small></p>
+                <ul>
+                    <li><i class="fas fa-check-circle"></i> Todos os Recursos Premium</li>
+                    <li><i class="fas fa-check-circle"></i> Recurso Pro 1</li>
+                    <li><i class="fas fa-check-circle"></i> Suporte Prioritário</li>
+                </ul>
+                <button class="btn btn-secondary">Selecionar</button>
+            </div>
+        </div>
+    </section>
+
+    <section id="auth" class="auth-section">
+         <div class="auth-container glassmorphic-card">
+            <div class="auth-tabs">
+                <button class="tab-button active" data-tab="login">Entrar</button>
+                <button class="tab-button" data-tab="register">Cadastrar</button>
+            </div>
+
+            <div id="login" class="auth-form active">
+                <h2>Entrar</h2>
+                <form>
+                    <div class="form-group">
+                        <label for="login-email">E-mail</label>
+                        <input type="email" id="login-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Senha</label>
+                        <input type="password" id="login-password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Entrar</button>
+                </form>
+                <p class="quick-links"><a href="#">Esqueci minha senha</a> | <a href="#">Ajuda</a></p>
+            </div>
+
+            <div id="register" class="auth-form">
+                 <h2>Cadastrar</h2>
+                 <form>
+                    <div class="form-group">
+                        <label for="register-name">Nome Completo</label>
+                        <input type="text" id="register-name" required>
+                    </div>
+                     <div class="form-group">
+                        <label for="register-email">E-mail</label>
+                        <input type="email" id="register-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">Senha</label>
+                        <input type="password" id="register-password" required>
+                    </div>
+                     <div class="form-group">
+                        <label for="register-confirm-password">Confirmar Senha</label>
+                        <input type="password" id="register-confirm-password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Cadastrar</button>
+                </form>
+                 <p class="quick-links"><a href="#">Planos de Assinatura</a> | <a href="#">Suporte</a></p>
+            </div>
+         </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2025 CYPHERX. Todos os direitos reservados.</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
