@@ -1,178 +1,339 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CYPHERX - Dashboard</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@403;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    {{!-- A tag da SDK do Supabase também pode ficar aqui no head, ou antes do fechamento do body --}}
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-</head>
-<body class="dashboard-body">
+import React, { useState, useEffect } from 'react';
+// Importe componentes Shadcn UI conforme necessário
+// Exemplo:
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress'; // Se quiser usar um componente de progresso Shadcn
 
-    <header>
-        <nav>
-            <div class="logo">CYPHERX</div>
-            <ul class="nav-links">
-                <li><a href="index.html">Início</a></li>
-                <li><a href="#settings">Configurações</a></li>
-                <li><a href="#" id="logout-button">Sair</a></li> {{!-- Adicionado ID para o JS --}}
-            </ul>
-        </nav>
-    </header>
+// TODO: Configurar Supabase client em um arquivo separado e importar aqui
+// import { supabaseClient } from '@/lib/supabaseClient';
 
-    <section class="dashboard-content">
-        {{!-- A estrutura principal do dashboard pode ser um flex container ou grid para controlar o layout --}}
-        {{!-- Exemplo: display: flex; flex-wrap: wrap; justify-content: space-between; --}}
+const Dashboard = () => {
+    // TODO: Migrar variáveis de estado da gestão do script.js para useState
+    const [currentUserSettings, setCurrentUserSettings] = useState(null);
+    const [currentBalance, setCurrentBalance] = useState('--');
+    const [rentabilidadeGlobal, setRentabilidadeGlobal] = useState('--');
+    const [metaLucro, setMetaLucro] = useState('--');
+    const [reservaCapital, setReservaCapital] = useState('--');
+    const [lastUpdate, setLastUpdate] = useState('--');
+    const [nextAction, setNextAction] = useState('Aguarde a Análise...');
+    const [recommendedValue, setRecommendedValue] = useState('--');
+    const [statusText, setStatusText] = useState('Analisando mercado...');
+    const [entriesToday, setEntriesToday] = useState('--');
+    const [winsToday, setWinsToday] = useState('--');
+    const [lossesToday, setLossesToday] = useState('--');
+    const [currentPayout, setCurrentPayout] = useState('--%');
+    const [isOperationPending, setIsOperationPending] = useState(false); // Estado para controlar botões de operação
+    const [settingsRequired, setSettingsRequired] = useState(false); // Estado para mostrar mensagem de settings
 
-        <aside class="sidebar glassmorphic-card">
-            {{!-- Conteúdo da Sidebar --}}
-            <h2>Olá, Usuário!</h2>
-            <div class="user-settings">
-                <h3>Configurações Rápidas</h3>
-                <div class="setting-item">
-                    <span>Notificações</span>
-                    <label class="switch">
-                        <input type="checkbox" checked>
-                        <span class="slider round"></span>
-                    </label>
-                </div>
-                <div class="setting-item">
-                    <span>Modo Noturno</span>
-                    <label class="switch">
-                        <input type="checkbox" checked>
-                        <span class="slider round"></span>
-                    <span class="slider round"></span>
-                    </label>
-                </div>
-            </div>
-            <div class="user-metrics">
-                <h3>Métricas Rápidas</h3>
-                {{!-- IDs para as métricas globais usadas no script.js --}}
-                <p>Banca Atual: <span id="bancaAtual">--</span></p> {{!-- Corrigido ID e label --}}
-                <p>Rentabilidade Global: <span id="rentabilidadeGlobal">--</span></p> {{!-- Corrigido ID e label --}}
-                <p>Meta de Lucro: <span id="metaLucro">--</span></p> {{!-- Adicionado ID para Meta de Lucro --}}
-                <p>Reserva de Capital: <span id="reservaCapital">--</span></p> {{!-- Adicionado ID para Reserva de Capital --}}
-                {{!-- TODO: Adicionar um elemento para a última atualização se necessário --}}
-                <p>Última Atualização: <span id="lastUpdate">--</span></p> {{!-- Mantido ID se usado --}}
-            </div>
-        </aside>
+    // TODO: Migrar a lógica de autenticação e carregamento de settings do script.js para useEffect
+    useEffect(() => {
+        const loadInitialData = async () => {
+            // TODO: Implementar verificação de sessão Supabase aqui
+            // const { data: { session } } = await supabaseClient.auth.getSession();
+            const session = { user: { id: 'mock-user-id' } }; // Mock para desenvolvimento
 
-        <main class="main-dashboard-area">
-            {{!-- Mensagem para quando settings são necessárias (inicialmente oculta via CSS) --}}
-            <div id="settings-required-message" class="glassmorphic-card" style="display: none; padding: 20px; text-align: center;">
-                <h2>Bem-vindo ao CYPHERX!</h2>
-                <p>Por favor, salve suas configurações iniciais na seção abaixo para começar a operar.</p>
-                <p><i class="fas fa-arrow-down"></i> Role para baixo para encontrar as Configurações.</p>
-            </div>
+            if (!session) {
+                // TODO: Redirecionar para página de login se não houver sessão
+                console.log("Usuário não autenticado, redirecionar.");
+                // window.location.href = '/';
+            } else {
+                const userId = session.user.id;
+                // TODO: Chamar loadUserSettings (adaptada para React/Supabase)
+                // const settings = await loadUserSettings(userId);
+                const settings = { // Mock settings
+                    user_id: userId,
+                    banca_inicial: 1000,
+                    payout_percent: 85,
+                    modo_operacao: 'equilibrado',
+                    moeda: 'BRL',
+                    exibir_valores: 'original'
+                };
+                setCurrentUserSettings(settings);
 
-            <div class="operation-panel glassmorphic-card">
-                <h2>Painel de Operação</h2>
-                <div class="operation-guidance">
-                    <p>Próxima Ação Sugerida:</p>
-                    <h3 id="nextAction">Aguarde a Análise...</h3>
-                    <p>Valor Recomendado:</p>
-                    {{!-- O span com a ID recommendedValue será atualizado pelo JS --}}
-                    <span class="recommended-value" id="recommendedValue">--</span>
-                </div>
+                if (!settings) {
+                    setSettingsRequired(true);
+                } else {
+                    setSettingsRequired(false);
+                    // TODO: Chamar updateOperationPanel (adaptada para React)
+                    // Esta função agora buscará trades e atualizará todos os estados relevantes
+                    // await updateOperationPanel(userId, settings);
+                    // Mock updateOperationPanel logic
+                    setCurrentBalance(settings.banca_inicial);
+                    setRentabilidadeGlobal(0);
+                    setMetaLucro(settings.banca_inicial * 0.03 * 1.25); // Exemplo de cálculo
+                    setReservaCapital(0);
+                    setLastUpdate(new Date().toLocaleTimeString());
+                    setEntriesToday(0);
+                    setWinsToday(0);
+                    setLossesToday(0);
+                    setCurrentPayout(`${settings.payout_percent}%`);
+                    setIsOperationPending(false); // Inicialmente, botões de resultado desabilitados
+                }
+            }
+        };
 
-                <div class="operation-status">
-                    {{!-- <div class="progress-indicator"></div> TODO: Implementar visualmente o indicador de progresso --}}
-                    {{!-- O p com a ID statusText será atualizado pelo JS (ex: C1/L1/E1) --}}
-                    <p id="statusText">Analisando mercado...</p>
-                </div>
+        loadInitialData();
+    }, []); // Array de dependências vazio para rodar apenas uma vez ao montar
 
-                <div class="performance-indicators">
-                    <h3>Performance Atual do Dia</h3> {{!-- Ajuste no label --}}
-                    <div class="indicators-grid">
-                        {{!-- IDs para os contadores do dia usados no script.js --}}
-                        <div><p>Entradas:</p><span id="entriesToday">--</span></div>
-                        <div><p>Wins:</p><span class="positive" id="winsToday">--</span></div>
-                        <div><p>Losses:</p><span class="negative" id="lossesToday">--</span></div>
-                        {{!-- ID para o payout atual usado no script.js --}}
-                        <div><p>Payout (%):</p><span id="currentPayout">--%</span></div>
+    // TODO: Adaptar loadUserSettings para React (fetch e set state)
+    // async function loadUserSettings(userId) { ... }
+
+    // TODO: Adaptar saveTrade para React (fetch e update state/list)
+    // async function saveTrade(tradeData) { ... }
+
+    // TODO: Adaptar updateOperationPanel para React (fetch trades, calculate metrics, set state)
+    // async function updateOperationPanel(userId, settings) { ... }
+
+    // TODO: Adaptar processTradeResult para React (calculate, save trade, then call updateOperationPanel)
+    // async function processTradeResult(result) { ... }
+
+    // Função para lidar com o clique no botão Iniciar Análise
+    const handleStartOperation = async () => {
+        console.log("Botão 'Iniciar Análise' clicado.");
+        if (!currentUserSettings) {
+            alert("Por favor, salve suas configurações iniciais antes de começar.");
+            return;
+        }
+        // TODO: Implementar lógica de início de operação, calcular primeiro valor, salvar trade 'Pending'
+        // e atualizar estados (nextAction, recommendedValue, statusText, isOperationPending)
+        setIsOperationPending(true); // Habilita botões de resultado
+        setStatusText('Análise iniciada...'); // Exemplo
+        setNextAction('Pronto para operar'); // Exemplo
+        setRecommendedValue('R$ 10.00'); // Exemplo
+    };
+
+    // Função para lidar com o clique nos botões de resultado (WIN/LOSS/DRAW)
+    const handleTradeResult = async (result) => {
+        console.log(`Botão ${result} clicado.`);
+        // TODO: Implementar lógica de processTradeResult, salvar resultado, calcular próximo passo
+        // e atualizar todos os estados relevantes chamando updateOperationPanel (adaptada)
+        setIsOperationPending(false); // Desabilita botões de resultado após processar (até a próxima análise)
+        setStatusText(`Trade: ${result}. Calculando próximo passo...`); // Exemplo
+        // Após o processamento e updateOperationPanel, os estados serão atualizados novamente.
+    };
+
+    // TODO: Lógica para carregar e exibir o histórico de trades em uma lista
+    // const [tradesHistory, setTradesHistory] = useState([]);
+    // useEffect(() => {
+    //    const fetchTrades = async () => { ... fetch trades from Supabase ... setTradesHistory(...) };
+    //    if(currentUserSettings) fetchTrades();
+    // }, [currentUserSettings]); // Dependência para recarregar quando settings mudam
+
+    // TODO: Lógica para salvar configurações (adaptar do script.js)
+    const handleSaveSettings = async (event) => {
+        event.preventDefault();
+        // TODO: Obter valores dos inputs do formulário
+        // TODO: Chamar Supabase upsert para salvar settings
+        // TODO: Atualizar currentUserSettings state on success
+        // TODO: Chamar updateOperationPanel para recalcular métricas
+        alert("Configurações salvas (lógica de salvar a ser implementada).");
+    };
+
+    // TODO: Lógica para logout (adaptar do script.js)
+    const handleLogout = async () => {
+        // TODO: Chamar Supabase signOut
+        // TODO: Redirecionar para página de login
+        alert("Logout (lógica de logout a ser implementada).");
+    };
+
+
+    // Renderização do componente
+    return (
+        <div className="flex flex-col min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+            {/* Header */}
+            <header className="bg-white dark:bg-gray-800 shadow-sm">
+                <nav className="container mx-auto px-4 py-4 flex justify-between items-center">
+                    <div className="text-xl font-semibold">CYPHERX</div>
+                    <ul className="flex space-x-4">
+                        <li><a href="/" className="hover:text-primary">Início</a></li>
+                        <li><a href="#settings" className="hover:text-primary">Configurações</a></li>
+                        <li><a href="#" onClick={handleLogout} className="hover:text-primary">Sair</a></li>
+                    </ul>
+                </nav>
+            </header>
+
+            {/* Main Content Area */}
+            <section className="container mx-auto px-4 py-8 flex flex-col lg:flex-row gap-8 flex-grow">
+                {/* Sidebar */}
+                <aside className="lg:w-1/4">
+                    <Card className="glassmorphic-card p-6">
+                        <CardHeader className="p-0 mb-4">
+                            <CardTitle className="text-xl">Olá, Usuário!</CardTitle> {/* TODO: Usar nome do usuário */}
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="mb-6">
+                                <h3 className="text-lg font-semibold mb-3">Configurações Rápidas</h3>
+                                <div className="flex items-center justify-between mb-2">
+                                    <Label htmlFor="notifications">Notificações</Label>
+                                    {/* TODO: Conectar com estado real */}
+                                    <Switch id="notifications" checked={true} />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="darkMode">Modo Noturno</Label>
+                                     {/* TODO: Implementar funcionalidade */}
+                                    <Switch id="darkMode" checked={true} />
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 className="text-lg font-semibold mb-3">Métricas Rápidas</h3>
+                                <p className="mb-1">Banca Atual: <span id="bancaAtual" className="font-medium">{currentBalance}</span></p>
+                                <p className="mb-1">Rentabilidade Global: <span id="rentabilidadeGlobal" className={`font-medium ${parseFloat(rentabilidadeGlobal) >= 0 ? 'text-gain' : 'text-loss'}`}>{rentabilidadeGlobal}</span></p>
+                                <p className="mb-1">Meta de Lucro: <span id="metaLucro" className="font-medium">{metaLucro}</span></p>
+                                <p className="mb-1">Reserva de Capital: <span id="reservaCapital" className={`font-medium ${parseFloat(reservaCapital) >= 0 ? 'text-gain' : 'text-loss'}`}>{reservaCapital}</span></p>
+                                <p>Última Atualização: <span id="lastUpdate" className="font-medium">{lastUpdate}</span></p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </aside>
+
+                {/* Main Dashboard Area */}
+                <main className="lg:w-3/4">
+                    {settingsRequired && (
+                         <Card className="glassmorphic-card p-6 mb-8 text-center">
+                             <CardTitle className="text-2xl mb-4">Bem-vindo ao CYPHERX!</CardTitle>
+                             <CardContent>
+                                 <p className="mb-4">Por favor, salve suas configurações iniciais na seção abaixo para começar a operar.</p>
+                                 <p><i className="fas fa-arrow-down"></i> Role para baixo para encontrar as Configurações.</p>
+                             </CardContent>
+                         </Card>
+                    )}
+
+                    <Card className="operation-panel glassmorphic-card p-6 mb-8">
+                        <CardHeader className="p-0 mb-4">
+                            <CardTitle className="text-2xl">Painel de Operação</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="mb-6">
+                                <p className="text-lg">Próxima Ação Sugerida:</p>
+                                <h3 id="nextAction" className="text-3xl font-bold text-action">{nextAction}</h3>
+                                <p className="text-lg mt-2">Valor Recomendado:</p>
+                                <span id="recommendedValue" className="text-2xl font-semibold">{recommendedValue}</span> {/* TODO: Formatar moeda */}
+                            </div>
+
+                            <div className="operation-status mb-6">
+                                {/* TODO: Implementar indicador de progresso real */}
+                                {/* <Progress value={50} className="w-full" /> */}
+                                <p id="statusText" className="text-sm mt-2">{statusText}</p>
+                            </div>
+
+                            <div className="performance-indicators mb-6">
+                                <h3 className="text-lg font-semibold mb-3">Performance Atual do Dia</h3>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div><p className="text-sm">Entradas:</p><span id="entriesToday" className="text-xl font-medium">{entriesToday}</span></div>
+                                    <div><p className="text-sm">Wins:</p><span id="winsToday" className="text-xl font-medium text-gain">{winsToday}</span></div>
+                                    <div><p className="text-sm">Losses:</p><span id="lossesToday" className="text-xl font-medium text-loss">{lossesToday}</span></div>
+                                    <div><p className="text-sm">Payout (%):</p><span id="currentPayout" className="text-xl font-medium">{currentPayout}</span></div>
+                                </div>
+                            </div>
+
+                            <div className="operation-buttons flex flex-col sm:flex-row gap-4 justify-center">
+                                {/* TODO: Controlar disabled state com base em isOperationPending */}
+                                <Button className="btn btn-primary start-operation" onClick={handleStartOperation} disabled={isOperationPending}>Iniciar Análise</Button>
+                                <Button className="btn btn-success" onClick={() => handleTradeResult('Win')} disabled={!isOperationPending}>WIN</Button>
+                                <Button className="btn btn-danger" onClick={() => handleTradeResult('Loss')} disabled={!isOperationPending}>LOSS</Button>
+                                <Button className="btn btn-info" onClick={() => handleTradeResult('Draw')} disabled={!isOperationPending}>DRAW</Button> {/* Botão opcional para DRAW */}
+                            </div>
+
+                            <p className="important-note text-center text-sm text-gray-600 dark:text-gray-400 mt-4">Mantenha a calma e siga as sugestões.</p>
+                        </CardContent>
+                    </Card>
+
+                    {/* Additional Sections */}
+                    <div className="dashboard-sections space-y-8">
+                        {/* Histórico de Trades */}
+                        <Card className="section glassmorphic-card p-6">
+                            <CardHeader className="p-0 mb-4">
+                                <CardTitle className="text-2xl">Histórico de Trades</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                {/* TODO: Implementar a exibição da lista de trades aqui */}
+                                <div id="trades-history-list">
+                                    <p>Carregando histórico...</p> {/* TODO: Mostrar trades reais */}
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Configurações do App */}
+                        <Card className="section glassmorphic-card p-6" id="settings">
+                            <CardHeader className="p-0 mb-4">
+                                <CardTitle className="text-2xl">Configurações do App</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                {/* TODO: Conectar formulário com estados e lógica de salvar */}
+                                <form onSubmit={handleSaveSettings}>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                        <div className="form-group">
+                                            <Label htmlFor="bancaInicial">Banca Inicial</Label>
+                                            <Input type="number" id="bancaInicial" defaultValue="1000" step="0.01" />
+                                        </div>
+                                        <div className="form-group">
+                                            <Label htmlFor="payout">Payout (%)</Label>
+                                            <Input type="number" id="payout" defaultValue="85" step="1" />
+                                        </div>
+                                        <div className="form-group">
+                                            <Label htmlFor="modoOperacao">Modo de Operação</Label>
+                                            <Select defaultValue="equilibrado">
+                                                <SelectTrigger id="modoOperacao">
+                                                    <SelectValue placeholder="Selecione o modo" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="conservador">Conservador</SelectItem>
+                                                    <SelectItem value="equilibrado">Equilibrado</SelectItem>
+                                                    <SelectItem value="agressivo">Agressivo</SelectItem>
+                                                    <SelectItem value="extremo">Extremo</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="form-group">
+                                            <Label htmlFor="moedas">Moeda</Label>
+                                            <Select defaultValue="BRL">
+                                                <SelectTrigger id="moedas">
+                                                    <SelectValue placeholder="Selecione a moeda" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="BRL">Real (BRL)</SelectItem>
+                                                    <SelectItem value="USD">Dólar (USD)</SelectItem>
+                                                    <SelectItem value="EUR">Euro (EUR)</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="form-group">
+                                            <Label htmlFor="valores">Exibir Valores</Label>
+                                            <Select defaultValue="original">
+                                                <SelectTrigger id="valores">
+                                                    <SelectValue placeholder="Selecione a opção" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="original">Original</SelectItem>
+                                                    <SelectItem value="arredondado">Arredondado</SelectItem>
+                                                    {/* <SelectItem value="oculto">Oculto</SelectItem> TODO: Adicionar se necessário */}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                    <Button type="submit" className="w-full">Salvar Configurações</Button>
+                                </form>
+                            </CardContent>
+                        </Card>
                     </div>
+                </main>
+            </section>
+
+            {/* Footer */}
+            <footer className="bg-white dark:bg-gray-800 shadow-sm mt-8">
+                <div className="container mx-auto px-4 py-4 text-center text-sm text-gray-600 dark:text-gray-400">
+                    <p>&copy; 2025 CYPHERX. Todos os direitos reservados.</p>
                 </div>
+            </footer>
+        </div>
+    );
+};
 
-                {{!-- BOTÕES DE OPERAÇÃO --}}
-                <div class="operation-buttons">
-                    {{!-- Botão para iniciar a análise/operação --}}
-                    <button class="btn btn-primary start-operation">Iniciar Análise</button>
-
-                    {{!-- Botões de resultado (inicialmente desabilitados via JS) --}}
-                    {{!-- Adicionados IDs para o script.js interagir --}}
-                    <button class="btn btn-success" id="win-button" disabled>WIN</button>
-                    <button class="btn btn-danger" id="loss-button" disabled>LOSS</button>
-                    <button class="btn btn-secondary" id="draw-button" disabled>DRAW</button> {{!-- Opcional: Botão de DRAW --}}
-                </div>
-
-                <p class="important-note">Mantenha a calma e siga as sugestões.</p>
-            </div>
-
-            <div class="dashboard-sections">
-                {{!-- Seção Histórico de Trades --}}
-                <div class="section glassmorphic-card">
-                    <h2>Histórico de Trades</h2>
-                    {{!-- TODO: Implementar a lista de trades aqui --}}
-                    <div id="trades-history-list">
-                        <p>Carregando histórico...</p>
-                        {{!-- Trades serão adicionados aqui pelo JavaScript --}}
-                    </div>
-                </div>
-
-                {{!-- Seção Configurações do App --}}
-                <div class="section glassmorphic-card" id="settings">
-                    <h2>Configurações do App</h2>
-                    <form>
-                        <div class="form-group">
-                            <label for="bancaInicial">Banca Inicial</label>
-                            <input type="number" id="bancaInicial" value="1000" step="0.01">
-                        </div>
-                        <div class="form-group">
-                            <label for="payout">Payout (%)</label>
-                            <input type="number" id="payout" value="85" step="1">
-                        </div>
-                        <div class="form-group">
-                            <label for="modoOperacao">Modo de Operação</label>
-                            <select id="modoOperacao">
-                                <option value="conservador">Conservador</option>
-                                <option value="equilibrado" selected>Equilibrado</option>
-                                <option value="agressivo">Agressivo</option>
-                                <option value="extremo">Extremo</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="moedas">Moeda</label>
-                            <select id="moedas">
-                                <option value="BRL" selected>Real (BRL)</option>
-                                <option value="USD">Dólar (USD)</option>
-                                <option value="EUR">Euro (EUR)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="valores">Exibir Valores</label>
-                            <select id="valores">
-                                <option value="original" selected>Original</option>
-                                <option value="arredondado">Arredondado</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Salvar Configurações</button>
-                    </form>
-                </div>
-            </div>
-
-        </main>
-    </section>
-
-    <footer>
-        <p>&copy; 2025 CYPHERX. Todos os direitos reservados.</p>
-    </footer>
-
-    {{!-- A tag da SDK do Supabase já está no head --}}
-    <script src="script.js"></script>
-</body>
-</html>
+export default Dashboard;
