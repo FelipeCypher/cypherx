@@ -11,8 +11,10 @@
     --glass-blur: 10px;
     --border-radius: 12px;
     --button-border-radius: 25px; /* Botões mais arredondados */
-    --padding-section: 6rem 2rem; /* Padding padrão para seções */
-    --max-width-content: 1200px; /* Largura máxima para o conteúdo principal */
+    --padding-section-desktop: 6rem 2rem; /* Padding padrão para seções em desktop */
+    --padding-section-mobile: 4rem 1rem; /* Padding padrão para seções em mobile */
+    --max-width-content: 1200px; /* Largura máxima para o conteúdo principal da página inicial */
+    --max-width-dashboard: 1400px; /* Largura máxima para o conteúdo do dashboard */
 
     /* Novas variáveis para efeitos neon/brilho */
     --neon-glow-color: #39FF14; /* Verde Neon */
@@ -249,7 +251,7 @@ nav {
 
 /* Seções da Página Inicial */
 section {
-    padding: var(--padding-section); /* Usando variável para padding padrão */
+    padding: var(--padding-section-desktop); /* Usando variável para padding padrão */
     text-align: center;
     max-width: var(--max-width-content); /* Centraliza e limita a largura */
     margin: 0 auto;
@@ -585,17 +587,17 @@ footer {
 }
 
 .dashboard-content {
-    display: flex;
-    gap: 2rem;
+    display: flex; /* Usa flexbox para layout lateral */
+    gap: 2rem; /* Espaçamento entre sidebar e área principal */
     padding: 2rem;
-    max-width: 1400px; /* Aumentado um pouco a largura máxima para o dashboard */
-    margin: 0 auto;
+    max-width: var(--max-width-dashboard); /* Limita a largura do conteúdo do dashboard */
+    margin: 0 auto; /* Centraliza o conteúdo do dashboard */
     flex-wrap: wrap; /* Permite quebrar em telas menores */
     flex-grow: 1; /* Permite que o conteúdo do dashboard ocupe o espaço restante */
 }
 
 .sidebar {
-    flex: 0 0 300px; /* Largura fixa para a sidebar */
+    flex: 0 0 300px; /* Largura fixa para a sidebar (não cresce, não encolhe, base 300px) */
     padding: 2rem;
     text-align: left;
     min-height: 500px; /* Altura mínima */
@@ -700,10 +702,10 @@ input:checked + .slider:before {
 
 
 .main-dashboard-area {
-    flex-grow: 1;
+    flex-grow: 1; /* Permite que a área principal ocupe o espaço restante */
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: 2rem; /* Espaçamento entre os cards/seções na área principal */
 }
 
 .operation-panel {
@@ -962,7 +964,7 @@ input:checked + .slider:before {
 
 
     section {
-        padding: 4rem 1rem; /* Reduz padding lateral em telas menores */
+        padding: var(--padding-section-mobile); /* Usa padding menor para mobile */
     }
 
     .hero-content {
@@ -1003,4 +1005,3 @@ input:checked + .slider:before {
          margin: 0.3rem 0;
      }
 }
-
