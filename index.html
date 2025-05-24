@@ -1,0 +1,1712 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CypherX - Gestão de Trades e Gráfico</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@^4.0.0"></script>
+    <!-- Using Luxon adapter as it's often paired with financial charts -->
+    <script src="https://cdn.jsdelivr.net/npm/luxon@^3.0.0"></script> 
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@^1.1.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@^0.2.0/dist/chartjs-chart-financial.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+
+    <style>
+        /* Global Styles & Variables */
+        :root {
+            --primary-color: #00E0FF; /* Neon Cyan */
+            --primary-hover: #00B0CC;
+            --primary-active: #008099;
+            --destructive-color: #FF3366; /* Neon Pink/Red for losses/sell */
+            --destructive-hover: #DD2255;
+            --win-color: #00FF8C; /* Neon Green */
+            --loss-color: var(--destructive-color); /* Consistent loss color */
+            --background-dark: #0D1117; /* Very Dark Blue/Black */
+            --card-background: rgba(16, 22, 34, 0.75); /* Slightly more opaque for better readability */
+            --border-color: rgba(0, 224, 255, 0.15); /* Slightly more visible Neon Cyan border */
+            --text-light: #E6F1FF; /* Light Bluish White */
+            --text-muted: #A1B0CC; /* Muted Bluish Grey */
+            --input-bg: rgba(0, 224, 255, 0.05);
+            --input-border: rgba(0, 224, 255, 0.3);
+            --progress-bar-bg: #2a303c;
+            --progress-bar-fill: var(--primary-color);
+            --chart-bg: #101622; 
+            --chart-canvas-bg: #0D1117; 
+            --chart-grid-color: rgba(0, 224, 255, 0.07);
+            --chart-tick-color: var(--text-muted);
+            --chart-line-color: var(--primary-color);
+            --chart-point-color: var(--primary-color);
+            --shadow-color: rgba(0, 224, 255, 0.1); 
+            --shadow-hover-color: rgba(0, 224, 255, 0.2);
+
+            /* Candlestick colors */
+            --candle-bullish: var(--win-color); /* Green for bullish candle */
+            --candle-bearish: var(--loss-color); /* Red for bearish candle */
+            --candle-unchanged: #999999; /* Grey for unchanged */
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background-dark);
+            color: var(--text-light);
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        @keyframes pulse-neon {
+            0% { box-shadow: 0 0 5px var(--primary-color), 0 0 10px var(--primary-color); }
+            50% { box-shadow: 0 0 15px var(--primary-color), 0 0 30px var(--primary-color); }
+            100% { box-shadow: 0 0 5px var(--primary-color), 0 0 10px var(--primary-color); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .glass-card {
+            background-color: var(--card-background);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 2px 15px var(--shadow-color);
+            padding: 25px;
+            margin-bottom: 25px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .glass-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 25px var(--shadow-hover-color);
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: var(--background-dark);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        button:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        button:active {
+            background-color: var(--primary-active);
+            transform: translateY(0px);
+        }
+        button.secondary {
+            background-color: var(--input-bg);
+            border: 1px solid var(--input-border);
+            color: var(--text-light);
+        }
+        button.secondary:hover {
+            background-color: rgba(0, 224, 255, 0.15);
+        }
+        
+        /* Specific styles for Operation Panel buttons */
+        .operation-panel .win-btn { background-color: var(--win-color); color: var(--background-dark); }
+        .operation-panel .win-btn:hover { background-color: #00d070; } /* Slightly darker green */
+        .operation-panel .loss-btn { background-color: var(--loss-color); color: var(--text-light); }
+        .operation-panel .loss-btn:hover { background-color: var(--destructive-hover); }
+        
+        button:disabled {
+            background-color: #555;
+            color: #999;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 12px;
+            border: 1px solid var(--input-border);
+            border-radius: 6px;
+            background-color: var(--input-bg);
+            color: var(--text-light);
+            font-size: 0.95rem;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(0, 224, 255, 0.2);
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        h1, h2, h3, h4 {
+            color: var(--text-light);
+            margin-bottom: 18px;
+            font-weight: 600;
+        }
+        h1 { font-size: 2.2rem; color: var(--primary-color);}
+        h2 { font-size: 1.8rem; }
+        h3 { font-size: 1.4rem; }
+        h4 { font-size: 1.1rem; color: var(--text-muted); }
+
+        p { margin-bottom: 12px; color: var(--text-muted); font-size: 0.95rem; }
+        a { color: var(--primary-color); text-decoration: none; }
+        a:hover { color: var(--primary-hover); }
+
+        header {
+            background-color: var(--card-background);
+            backdrop-filter: blur(10px);
+            padding: 12px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky; top: 0; z-index: 1000;
+        }
+        .logo {
+            display: flex; align-items: center;
+            font-size: 1.6rem; font-weight: 700;
+            color: var(--primary-color); text-decoration: none;
+        }
+        .logo i { margin-right: 8px; font-size: 1.8rem; }
+        nav ul { list-style: none; display: flex; gap: 20px; }
+        nav ul li a {
+            color: var(--text-light); font-weight: 500; font-size: 1rem;
+            position: relative; padding-bottom: 4px;
+        }
+        nav ul li a::after {
+            content: ''; position: absolute; left: 0; bottom: 0;
+            width: 0; height: 2px; background-color: var(--primary-color);
+            transition: width 0.3s ease;
+        }
+        nav ul li a:hover::after, nav ul li a.active::after { width: 100%; }
+        nav ul li.disabled a { color: #777; cursor: not-allowed; pointer-events: none; }
+        nav ul li.disabled a::after { background-color: transparent; }
+
+        #app-content {
+            flex-grow: 1; padding: 25px;
+            max-width: 1600px; 
+            margin: 0 auto; width: 100%;
+        }
+        .page-section { display: none; animation: fadeIn 0.4s ease-out; }
+        .page-section.active { display: block; }
+
+        #welcome-page .hero-section { text-align: center; padding: 60px 20px; }
+        #welcome-page .hero-section h1 { font-size: 3rem; margin-bottom: 18px; }
+        #welcome-page .hero-section p { font-size: 1.2rem; max-width: 700px; margin: 0 auto 25px auto; }
+        #start-now-button { animation: pulse-neon 2s infinite; font-size: 1.1rem; padding: 12px 30px; }
+        #welcome-page .metrics-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin: 30px 0; }
+        #welcome-page .metric-item { text-align: center; padding: 20px; }
+        #welcome-page .metric-item .value { font-size: 2rem; font-weight: 700; color: var(--primary-color); margin-bottom: 8px; }
+        #welcome-page .metric-item .label { font-size: 0.9rem; color: var(--text-muted); }
+        #welcome-page .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+        #welcome-page .feature-item i { font-size: 2.5rem; color: var(--primary-color); margin-bottom: 15px; }
+        #welcome-page .plans-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+        #welcome-page .plan-card ul li i { color: var(--win-color); }
+
+        #auth-page .auth-container { max-width: 400px; margin: 50px auto; padding: 30px; }
+
+        #quick-guide-page .accordion-container { max-width: 750px; margin: 20px auto; }
+        #quick-guide-page .accordion-item { margin-bottom: 12px; }
+        #quick-guide-page .accordion-header { 
+            padding: 15px; font-size: 1.05rem; background-color: rgba(0, 224, 255, 0.08); cursor: pointer; 
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        #quick-guide-page .accordion-header:hover { background-color: rgba(0, 224, 255, 0.12); }
+        #quick-guide-page .accordion-header.active i.fa-chevron-down { transform: rotate(180deg); }
+        #quick-guide-page .accordion-content { padding: 0 15px; max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out, padding 0.3s ease-out;}
+        #quick-guide-page .accordion-content.active { max-height: 600px; padding: 15px; }
+
+        #dashboard-page .crypto-quotes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+        #dashboard-page .crypto-card .symbol { font-size: 1.8rem; }
+        #dashboard-page .crypto-card .price { font-size: 1.5rem; }
+        #dashboard-page .crypto-card .change.positive { color: var(--win-color); }
+        #dashboard-page .crypto-card .change.negative { color: var(--loss-color); }
+
+        #cypher-quantum-page .quantum-tabs { display: flex; margin-bottom: 25px; border-bottom: 1px solid var(--border-color); }
+        #cypher-quantum-page .quantum-tab-btn { 
+            padding: 12px 20px; font-size: 1rem; cursor: pointer; background: none; border: none; 
+            color: var(--text-muted); border-bottom: 2px solid transparent;
+        }
+        #cypher-quantum-page .quantum-tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+        #cypher-quantum-page .quantum-tab-btn:hover { color: var(--text-light); }
+
+        #cypher-quantum-page .quantum-sub-section { display: none; animation: fadeIn 0.4s ease-out; }
+        #cypher-quantum-page .quantum-sub-section.active { display: block; }
+
+        #operation-sub-section .panels-container { display: flex; flex-direction: column; gap: 25px; }
+        @media (min-width: 1024px) {
+            #operation-sub-section .panels-container { flex-direction: row; }
+            #operation-sub-section .operation-panel,
+            #operation-sub-section .chart-panel-wrapper { flex: 1; min-width: 0; }
+        }
+
+        .operation-panel .data-display { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 18px; }
+        .operation-panel .data-item { 
+            padding: 12px; background-color: rgba(0,224,255,0.03); border-radius: 6px; 
+            border: 1px solid var(--input-border); 
+        }
+        .operation-panel .data-item .value { font-size: 1.5rem; font-weight: 600; }
+        .operation-panel .data-item .label { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px; }
+        .operation-panel .data-item .value.profit { color: var(--win-color); }
+        .operation-panel .data-item .value.loss { color: var(--loss-color); }
+
+        .operation-panel .progress-bar-container { 
+            background-color: var(--progress-bar-bg);
+            border-radius: 5px; height: 8px; margin-top: 5px; overflow: hidden;
+        }
+        .operation-panel .progress-bar-fill {
+            height: 100%; width: 0%; background-color: var(--progress-bar-fill);
+            border-radius: 5px; transition: width 0.5s ease-out;
+        }
+        .operation-panel .history-list { 
+            max-height: 120px; overflow-y: auto; padding: 8px; margin-top: 8px; 
+            background-color: var(--input-bg); border-radius: 6px; border: 1px solid var(--input-border); 
+        }
+        .operation-panel .history-item { 
+            padding: 6px 0; font-size: 0.9rem; border-bottom: 1px solid rgba(255,255,255,0.05); 
+            display: flex; justify-content: space-between; 
+        }
+        .operation-panel .history-item:last-child { border-bottom: none; }
+        .operation-panel .history-item .result.win { color: var(--win-color); font-weight: bold; }
+        .operation-panel .history-item .result.loss { color: var(--loss-color); font-weight: bold; }
+        .operation-panel .bot-signal { 
+            padding: 12px; margin-top: 18px; font-size: 0.95rem; 
+            border: 1px solid var(--primary-color); border-radius: 6px; 
+            text-align: center; background-color: rgba(0,224,255,0.05); color: var(--primary-color);
+        }
+        .operation-panel .action-buttons { margin-top: 20px; display:flex; gap:10px; }
+        .operation-panel .action-buttons button { padding: 10px 18px; font-size: 0.9rem; flex-grow:1; }
+        
+        /* Chart Panel Styles */
+        .chart-panel-wrapper h3 { margin-bottom: 15px; text-align: center;}
+        .chart-panel .chart-controls {
+            display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; align-items: center;
+        }
+        .chart-panel .chart-controls label { margin-bottom: 0; margin-right: 5px; font-size: 0.85rem; }
+        .chart-panel .chart-controls select,
+        .chart-panel .chart-controls button { padding: 8px 12px; font-size: 0.85rem; margin-bottom: 0; }
+        .chart-panel .zoom-controls { display: flex; gap: 8px; margin-left: auto; }
+        .chart-panel .chart-info { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px; padding: 0 5px;}
+        .chart-panel .timer { font-weight: 600; }
+        .chart-panel .timer.warning { color: yellow; }
+        .chart-panel .timer.critical { color: var(--destructive-color); }
+        .chart-panel .backtest-stats { font-size: 0.75rem; text-align: center; color: var(--text-muted); min-height: 18px; margin-bottom: 10px; }
+        .chart-panel .backtest-stats .accuracy.good { color: var(--win-color); }
+        .chart-panel .backtest-stats .accuracy.medium { color: yellow; }
+        .chart-panel .backtest-stats .accuracy.bad { color: var(--loss-color); }
+        .chart-panel .chart-container {
+            width: 100%;
+            height: 350px; 
+            background-color: var(--chart-bg);
+            padding: 10px;
+            border-radius: 8px;
+            position: relative; 
+        }
+        #priceChart { background-color: var(--chart-canvas-bg); border-radius: 4px; }
+        #loadingMessage {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: var(--text-muted); font-size: 1.1em; text-align: center;
+            background-color: rgba(13, 17, 23, 0.8); padding: 20px; border-radius: 8px;
+            display: none; 
+        }
+
+        #message-box {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background-color: var(--card-background); backdrop-filter: blur(15px);
+            border: 1px solid var(--primary-color); border-radius: 10px;
+            padding: 25px; box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+            z-index: 2000; display: none; flex-direction: column; align-items: center; text-align: center;
+            max-width: 380px; width: 90%;
+        }
+        #message-box h3 { font-size: 1.3rem; margin-bottom: 15px;}
+        #message-box p { font-size: 1rem; margin-bottom: 20px;}
+        #overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.65);
+            z-index: 1999; display: none;
+        }
+
+        @media (max-width: 768px) {
+            header { flex-direction: column; padding: 15px; }
+            nav ul { margin-top: 10px; flex-wrap: wrap; justify-content: center; gap: 10px 15px; }
+            #app-content { padding: 15px; }
+            .glass-card { padding: 20px; }
+            h1 { font-size: 1.8rem; } h2 { font-size: 1.5rem; } h3 { font-size: 1.2rem; }
+            #welcome-page .hero-section h1 { font-size: 2.2rem; }
+            #welcome-page .hero-section p { font-size: 1.05rem; }
+            #cypher-quantum-page .quantum-tabs button { padding: 10px 15px; font-size: 0.9rem; }
+            .chart-panel .chart-controls { flex-direction: column; align-items: stretch; }
+            .chart-panel .zoom-controls { width: 100%; justify-content: space-around; margin-top:10px; }
+            .operation-panel .action-buttons { flex-direction: column; }
+            .operation-panel .action-buttons button { width: 100%; }
+        }
+
+        /* Added for chartjs-chart-financial candlestick colors */
+        .chartjs-financial-body-green { fill: var(--candle-bullish); }
+        .chartjs-financial-wick-green { stroke: var(--candle-bullish); }
+        .chartjs-financial-body-red { fill: var(--candle-bearish); }
+        .chartjs-financial-wick-red { stroke: var(--candle-bearish); }
+        .chartjs-financial-body-unchanged { fill: var(--candle-unchanged); }
+        .chartjs-financial-wick-unchanged { stroke: var(--candle-unchanged); }
+
+    </style>
+</head>
+<body>
+    <div id="overlay"></div>
+    <div id="message-box" class="glass-card">
+        <h3 id="message-box-title"></h3>
+        <p id="message-box-content"></p>
+        <button onclick="hideMessageBox()">OK</button>
+    </div>
+
+    <header>
+        <a href="#" class="logo" onclick="showPage('welcome-page'); return false;">
+            <i class="fas fa-shield-alt"></i> CypherX
+        </a>
+        <nav>
+            <ul>
+                <li><a href="#" data-page="welcome-page" class="nav-link active">Início</a></li>
+                <li class="nav-item-auth"><a href="#" data-page="dashboard-page" class="nav-link disabled">Dashboard</a></li>
+                <li class="nav-item-auth"><a href="#" data-page="cypher-quantum-page" class="nav-link disabled">Cypher Quantum</a></li>
+                <li><a href="#" data-page="quick-guide-page" class="nav-link">Guia Rápido</a></li>
+                <li class="nav-item-auth" id="logout-nav-item" style="display: none;"><a href="#" onclick="logout(); return false;" class="nav-link">Sair</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main id="app-content">
+        <section id="welcome-page" class="page-section active">
+            <div class="hero-section glass-card">
+                <h1>Sua Plataforma Definitiva de Gestão de Trades</h1>
+                <p>O CypherX oferece ferramentas avançadas para otimizar suas operações de criptomoedas, com simulação de risco e insights de mercado em tempo real.</p>
+                <button id="start-now-button" onclick="showPage('auth-page')">Começar Agora <i class="fas fa-arrow-right" style="margin-left: 8px;"></i></button>
+            </div>
+
+            <h2 style="text-align: center; margin-bottom: 30px;">Métricas Dinâmicas</h2>
+            <div class="metrics-panel">
+                <div class="metric-item glass-card">
+                    <div class="value" id="metric-banca-atual">R$ 0.00</div>
+                    <div class="label">Banca Atual</div>
+                </div>
+                <div class="metric-item glass-card">
+                    <div class="value" id="metric-rentabilidade-global">R$ 0.00</div>
+                    <div class="label">Rentabilidade Global</div>
+                </div>
+                <div class="metric-item glass-card">
+                    <div class="value" id="metric-meta-lucro">R$ 0.00</div>
+                    <div class="label">Meta de Lucro Global</div>
+                </div>
+                <div class="metric-item glass-card">
+                    <div class="value" id="metric-reserva-capital">R$ 0.00</div>
+                    <div class="label">Reserva de Capital</div>
+                </div>
+            </div>
+
+            <h2 style="text-align: center; margin-bottom: 30px;">Funcionalidades Poderosas</h2>
+            <div class="features-section">
+                <div class="features-grid">
+                    <div class="feature-item glass-card">
+                        <i class="fas fa-brain"></i>
+                        <h3>Gestão Inteligente</h3>
+                        <p>Controle seu capital com estratégias de risco predefinidas e automatizadas.</p>
+                    </div>
+                    <div class="feature-item glass-card">
+                        <i class="fas fa-chart-line"></i>
+                        <h3>Gráficos em Tempo Real</h3>
+                        <p>Acompanhe cotações e desempenho de bots com dados de mercado ao vivo.</p>
+                    </div>
+                    <div class="feature-item glass-card">
+                        <i class="fas fa-robot"></i>
+                        <h3>Bots de Sinais</h3>
+                        <p>Receba sugestões de compra/venda baseadas em algoritmos avançados.</p>
+                    </div>
+                </div>
+            </div>
+
+            <h2 style="text-align: center; margin-bottom: 30px;">Planos de Assinatura</h2>
+             <p style="text-align: center; font-size: 0.85em; color: var(--text-muted); margin-top: -20px; margin-bottom: 25px;">A liberação total dos recursos acontecerá em até 8 dias. Tudo será liberado de forma gradativa pensando na sua jornada operacional.</p>
+            <div class="plans-section">
+                <div class="plans-grid">
+                    <div class="plan-card glass-card">
+                        <h3>Free</h3>
+                        <div class="price">R$ 0,00<span>/mês</span></div>
+                        <ul>
+                            <li><i class="fas fa-check-circle"></i> Gestão básica</li>
+                            <li><i class="fas fa-check-circle"></i> Planilha Online free</li>
+                            <li><i class="fas fa-check-circle"></i> Download Planilha (PDF)</li>
+                            <li><i class="fas fa-check-circle"></i> Conversor de moedas</li>
+                            <li><i class="fas fa-check-circle"></i> Cotações de criptomoedas</li>
+                        </ul>
+                        <button class="secondary" onclick="selectPlan('Free')">Escolher Plano</button>
+                    </div>
+                     <div class="plan-card glass-card">
+                        <h3>Start</h3>
+                        <div class="price-container" style="min-height: 60px;">
+                            <span class="original-price" style="text-decoration: line-through; color: var(--destructive-color); font-size: 1.1rem;">R$ 89,90</span><br>
+                            <span class="current-price" style="font-size: 2.2rem; font-weight: 700; color: white;">R$ 39,90</span>
+                            <span class="price-period" style="font-size: 1rem; color: var(--text-muted);">/mês</span><br>
+                            <span class="promo-note" style="font-size: 0.75rem; color: var(--win-color); display: block;">(Preço promocional)</span>
+                        </div>
+                        <ul>
+                            <li><i class="fas fa-check-circle"></i> Gestão Cypher Flow</li>
+                            <li><i class="fas fa-check-circle"></i> Todas do Free (Exceto Gestão Básica)</li>
+                            <li><i class="fas fa-check-circle"></i> Métricas automáticas (Dashboard)</li>
+                            <li><i class="fas fa-robot"></i> Assistente Inteligente de Trading</li>
+                            <li><i class="fas fa-headset"></i> Suporte prioritário</li>
+                        </ul>
+                        <button onclick="selectPlan('Start')">Escolher Plano</button>
+                    </div>
+                    <div class="plan-card glass-card">
+                        <h3>Pro</h3>
+                        <div class="price">R$ 69,90<span>/mês</span></div>
+                         <ul>
+                            <li><i class="fas fa-check-circle"></i> Gestão Cypher Flow</li>
+                            <li><i class="fas fa-check-circle"></i> Todas do Free (Exceto Gestão Básica)</li>
+                            <li><i class="fas fa-check-circle"></i> Métricas automáticas (Dashboard)</li>
+                            <li><i class="fas fa-robot"></i> Assistente Inteligente de Trading</li>
+                            <li><i class="fas fa-headset"></i> Suporte prioritário</li>
+                            <li><i class="fas fa-infinity"></i> Sinais ilimitados de entrada (opções)</li>
+                        </ul>
+                        <button onclick="selectPlan('Pro')">Escolher Plano</button>
+                    </div>
+                    <div class="plan-card glass-card">
+                        <h3 style="color: gold;">Premium</h3>
+                         <div class="price-container" style="min-height: 60px;">
+                            <span class="original-price" style="text-decoration: line-through; color: var(--destructive-color); font-size: 1.1rem;">R$ 1.500,00</span><br>
+                            <span class="current-price" style="font-size: 2.2rem; font-weight: 700; color: gold;">12x R$ 85,00</span>
+                        </div>
+                        <ul>
+                            <li><i class="fas fa-check-circle"></i> Gestão Cypher Quantum</li>
+                            <li><i class="fas fa-check-circle"></i> Todas do Pro (Exceto Gestão Cypher Flow)</li>
+                            <li><i class="fas fa-file-invoice-dollar"></i> Relatórios Exclusivos dos ativos</li>
+                            <li><i class="fas fa-brain"></i> Sugestões avançadas de IA para compra / venda (dia)</li>
+                            <li><i class="fas fa-infinity"></i> Sinais ilimitados de entrada (opções)</li>
+                            <li><i class="fas fa-users"></i> Operações ao vivo com Felipe Cypher</li>
+                            <li><i class="fas fa-star"></i> Suporte VIP individualizado</li>
+                        </ul>
+                        <button style="background: linear-gradient(45deg, gold, darkorange); color: black;" onclick="selectPlan('Premium')">Escolher Plano</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="auth-page" class="page-section">
+             <div class="auth-container glass-card">
+                <h2 id="auth-title">Faça Login</h2>
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="login-email">Email:</label>
+                        <input type="email" id="login-email" placeholder="seu@email.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Senha:</label>
+                        <input type="password" id="login-password" placeholder="********" required>
+                    </div>
+                    <button type="submit">Entrar</button>
+                    <p class="form-toggle">Não tem uma conta? <a href="#" onclick="toggleAuthForm('register'); return false;">Cadastre-se</a></p>
+                </form>
+
+                <form id="register-form" style="display: none;">
+                    <div class="form-group">
+                        <label for="register-name">Nome:</label>
+                        <input type="text" id="register-name" placeholder="Seu nome completo" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-email">Email:</label>
+                        <input type="email" id="register-email" placeholder="seu@email.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">Senha:</label>
+                        <input type="password" id="register-password" placeholder="********" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-confirm-password">Confirmar Senha:</label>
+                        <input type="password" id="register-confirm-password" placeholder="********" required>
+                    </div>
+                    <button type="submit">Criar Conta</button>
+                    <p class="form-toggle">Já tem uma conta? <a href="#" onclick="toggleAuthForm('login'); return false;">Faça Login</a></p>
+                </form>
+            </div>
+        </section>
+
+        <section id="quick-guide-page" class="page-section">
+            <h1 style="text-align: center; margin-bottom: 30px;">Guia Rápido do Usuário</h1>
+            <div class="accordion-container">
+                <div class="accordion-item glass-card">
+                    <div class="accordion-header">
+                        <i class="fas fa-tasks" style="margin-right: 10px; color: var(--primary-color);"></i> Gestão Operacional CypherX <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <p>A gestão de risco da CypherX é projetada para auxiliar na otimização de suas operações e na proteção do seu capital. O sistema visa objetivos operacionais claros para cada período de operação:</p>
+                        <ul style="list-style-type: disc; margin-left: 20px; margin-bottom: 15px;">
+                            <li><strong>Meta de Ganhos (diária):</strong> Buscar alcançar 2 (duas) operações vitoriosas.</li>
+                            <li><strong>Limite de Perdas Consecutivas (diário):</strong> Interromper as operações no dia caso ocorram 2 (duas) perdas consecutivas.</li>
+                        </ul>
+                        <p>É fundamental compreender que a CypherX fornece uma ferramenta de gestão e análise, e não garante resultados ou lucros. Os resultados de suas operações de trade são de sua inteira responsabilidade. Nossa plataforma visa auxiliar na melhoria da tomada de decisão em cenários favoráveis e na mitigação de perdas em cenários desfavoráveis, mas não elimina os riscos inerentes ao mercado.</p>
+                        <p>Operações financeiras, especialmente em mercados de alta volatilidade como opções, envolvem riscos significativos. Recomendamos enfaticamente que utilize apenas capital que você pode se permitir perder e que não comprometa suas responsabilidades financeiras pessoais.</p>
+                        <p>A gestão operacional não é um "santo graal" e o sucesso no trading é influenciado por múltiplas variáveis, incluindo, mas não se limitando a: disciplina do operador, experiência de mercado, estado psicológico e emocional, ambiente de operação, fatores de estilo de vida (como sedentarismo e má alimentação), qualidade do sono, nível de comprometimento. Ações ou decisões tomadas de forma imatura ou irresponsável pelo usuário não podem ser imputadas como falha ou má qualidade da gestão oferecida pela CypherX.</p>
+                        <p>Estas diretrizes de gestão ajudam a manter uma abordagem disciplinada, mas o sucesso final depende da aplicação consistente e consciente por parte do usuário. O painel de operação automático guia você através desta gestão.</p>
+                    </div>
+                </div>
+                <div class="accordion-item glass-card">
+                    <div class="accordion-header">
+                       <i class="fas fa-file-contract" style="margin-right: 10px; color: var(--primary-color);"></i> Termos de Serviço <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <p>Ao utilizar a CypherX, você concorda com nossos Termos de Serviço. Estes termos regem o uso da plataforma, suas funcionalidades, planos de assinatura e as responsabilidades de ambas as partes. É vedada a disseminação de informações falsas sobre o sistema. Em consonância com a legislação brasileira, a disseminação de informações falsas sobre a plataforma veda o anonimato, sendo necessária a identificação do responsável. Caso sejam detectadas falhas ou incorreções nas informações apresentadas pelo sistema, solicitamos que o usuário reporte imediatamente ao nosso suporte para que as devidas correções sejam efetuadas. Adicionalmente, a cópia, reprodução ou distribuição não autorizada de informações, conteúdos ou qualquer propriedade intelectual atribuída ao sistema CypherX sujeitará o infrator às penalidades cabíveis nas esferas cível, criminal e administrativa. Recomendamos a leitura atenta e integral dos termos para pleno entendimento dos seus direitos e obrigações, incluindo as políticas aplicáveis a cada plano de serviço.</p>
+                    </div>
+                </div>
+                <div class="accordion-item glass-card">
+                    <div class="accordion-header">
+                        <i class="fas fa-user-secret" style="margin-right: 10px; color: var(--primary-color);"></i> Privacidade <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="accordion-content">
+                         <p>Respeitamos a sua privacidade. A CypherX coleta e utiliza dados estritamente necessários para o funcionamento da plataforma e para o gerenciamento de suas operações de trade, como valores de entrada e resultados. Nosso tratamento de dados pessoais visa atender às finalidades da plataforma, em conformidade com as boas práticas e a legislação aplicável à proteção de dados.</p>
+                    </div>
+                </div>
+                 <div class="accordion-item glass-card">
+                    <div class="accordion-header">
+                        <i class="fas fa-shield-alt" style="margin-right: 10px; color: var(--primary-color);"></i> Sobre Nossos Dados e Segurança <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <p>A CypherX está comprometida com a proteção dos seus dados. Empregamos medidas de segurança técnicas e administrativas adequadas para proteger as informações de suas operações de trade registradas em nossa plataforma contra acessos não autorizados, perda, alteração ou divulgação. A segurança dos seus dados é uma prioridade.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="dashboard-page" class="page-section">
+            <h1 style="text-align: center; margin-bottom: 30px;">Dashboard</h1>
+            <div class="crypto-quotes-grid" id="crypto-quotes-container">
+                <!-- Crypto cards serão preenchidas pelo JS -->
+            </div>
+        </section>
+
+        <section id="cypher-quantum-page" class="page-section">
+            <h1 style="text-align: center; margin-bottom: 30px;">Cypher Quantum</h1>
+            <div class="quantum-tabs">
+                <button class="quantum-tab-btn active" data-tab="settings" onclick="showQuantumSubSection('settings')">Configurações</button>
+                <button class="quantum-tab-btn" data-tab="operation" onclick="showQuantumSubSection('operation')">Operação</button>
+            </div>
+
+            <div id="settings-sub-section" class="quantum-sub-section glass-card active">
+                <h3><i class="fas fa-cog" style="margin-right: 8px;"></i>Configurações de Operação</h3>
+                <div class="form-group">
+                    <label for="initial-balance">Banca Inicial:</label>
+                    <input type="number" id="initial-balance" placeholder="Ex: 1000">
+                </div>
+                <div class="form-group">
+                    <label for="payout-percentage">Payout (%):</label>
+                    <input type="number" id="payout-percentage" placeholder="Ex: 87" min="1" max="100">
+                </div>
+                <div class="form-group">
+                    <label for="operation-mode">Modo de Operação:</label>
+                    <select id="operation-mode">
+                        <option value="Conservador">Conservador</option>
+                        <option value="Equilibrado" selected>Equilibrado</option>
+                        <option value="Agressivo">Agressivo</option>
+                        <option value="Extremo">Extremo</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="display-currency">Moeda de Exibição:</label>
+                    <select id="display-currency">
+                        <option value="BRL" selected>Real (BRL)</option>
+                        <option value="USD">Dólar (USD)</option>
+                        <option value="EUR">Euro (EUR)</option>
+                    </select>
+                </div>
+                <div class="settings-actions" style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button onclick="handleSaveSettings()"><i class="fas fa-save" style="margin-right: 8px;"></i>Salvar</button>
+                    <button class="secondary" onclick="restoreDefaultSettings()"><i class="fas fa-undo" style="margin-right: 8px;"></i>Restaurar Padrões</button>
+                </div>
+            </div>
+
+            <div id="operation-sub-section" class="quantum-sub-section" style="display: none;">
+                <div class="panels-container">
+                    <div class="operation-panel glass-card">
+                        <h3><i class="fas fa-cogs" style="margin-right: 8px;"></i>Painel de Operação Automático</h3>
+                        <p style="color: var(--text-muted); font-size: 0.85em; margin-bottom: 15px;">
+                            <i class="fas fa-exclamation-triangle" style="color: orange; margin-right: 5px;"></i>
+                            A gestão é uma ferramenta de auxílio. Opere com responsabilidade.
+                        </p>
+
+                        <div class="data-display">
+                            <div class="data-item">
+                                <div class="label"><i class="fas fa-wallet" style="margin-right: 5px;"></i>Banca Atual</div>
+                                <div class="value" id="op-banca-atual">R$ 0.00</div>
+                            </div>
+                            <div class="data-item">
+                                <div class="label"><i class="fas fa-chart-pie" style="margin-right: 5px;"></i>Rentabilidade Global</div>
+                                <div class="value" id="op-rentabilidade-global">R$ 0.00</div>
+                            </div>
+                            <div class="data-item">
+                                <div class="label"><i class="fas fa-percentage" style="margin-right: 5px;"></i>Taxa de Sucesso</div>
+                                <div class="value" id="op-taxa-sucesso">0.0%</div>
+                            </div>
+                        </div>
+                         <div class="data-item" style="margin-top: 15px; background-color: rgba(0, 224, 255, 0.1); border: 1px solid var(--primary-color); padding: 15px; border-radius: 8px;">
+                            <div class="label" style="color: var(--text-light);"><i class="fas fa-calculator" style="margin-right: 5px;"></i>Próxima Entrada Sugerida</div>
+                            <div class="value" id="op-proxima-entrada" style="color: var(--primary-color); font-size: 2rem;">R$ 0.00</div>
+                        </div>
+
+
+                        <p style="margin-top: 15px; font-weight: 500; font-size: 0.9rem;">Mensagem: <span id="op-message" style="color: var(--text-light); font-style: italic;">Aguardando início...</span></p>
+
+                        <div style="margin-top: 10px;">
+                            <span style="font-weight: 500; font-size: 0.9rem;">Progresso da Etapa Atual:</span>
+                            <span style="float: right; font-size: 0.85em; color: var(--text-muted);" id="op-progress-text">0/4</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill" id="op-progress-bar"></div>
+                        </div>
+
+                        <p style="margin-top: 15px; font-weight: 500; font-size: 0.9rem;">Histórico da Etapa:</p>
+                        <ul class="history-list" id="op-history-list">
+                            <li style="text-align: center; color: var(--text-muted);">Nenhuma entrada nesta etapa.</li>
+                        </ul>
+
+                        <div class="bot-signal" id="op-bot-signal">
+                            <i class="fas fa-robot" style="margin-right: 8px;"></i>Sinais dos Gráficos: N/A
+                        </div>
+
+                        <div class="action-buttons">
+                            <button class="win-btn" onclick="recordTrade('WIN')" id="op-win-btn"><i class="fas fa-check-circle" style="margin-right: 8px;"></i>Win</button>
+                            <button class="loss-btn" onclick="recordTrade('LOSS')" id="op-loss-btn"><i class="fas fa-times-circle" style="margin-right: 8px;"></i>Loss</button>
+                        </div>
+                         <div class="action-buttons" style="margin-top: 10px;">
+                            <button class="secondary" onclick="deleteLastEntry()" id="op-delete-btn" style="flex-grow: 1;"><i class="fas fa-trash-alt" style="margin-right: 8px;"></i>Apagar Última</button>
+                            <button class="secondary" onclick="deleteAllEntries()" style="flex-grow: 1;"><i class="fas fa-sync-alt" style="margin-right: 8px;"></i>Reiniciar Painel</button>
+                        </div>
+                    </div>
+
+                    <!-- CHART PANEL WRAPPER -->
+                    <div class="chart-panel-wrapper glass-card">
+                        <!-- Conteúdo do painel de gráfico será inserido aqui pelo JavaScript -->
+                        <div class="chart-header">
+                            <div class="chart-title-section">
+                                <h3 id="chartPanelTitle">Gráfico - M1 - BTC — Alien Bot 👽</h3>
+                                <div class="info-text">
+                                    Ativo: <span id="chartPanelCurrentAsset">BTC</span> | Timeframe: <span id="chartPanelCurrentTimeframe">M1</span>
+                                </div>
+                                <div class="countdown-timer" id="chartPanelCandleCountdown">Expira em: --:--</div>
+                            </div>
+                            <div class="chart-selectors">
+                                <div class="selector-group">
+                                    <label for="chartPanelAssetSelect">Ativo:</label>
+                                    <select id="chartPanelAssetSelect">
+                                        <option value="BTC">BTC</option>
+                                        <option value="ETH">ETH</option>
+                                        <option value="SOL">SOL</option>
+                                        <option value="ADA">ADA</option>
+                                        <option value="XRP">XRP</option>
+                                    </select>
+                                </div>
+                                <div class="selector-group">
+                                    <label for="chartPanelTimeframeSelect">Timeframe:</label>
+                                    <select id="chartPanelTimeframeSelect">
+                                        <option value="1m">M1</option>
+                                        <option value="5m">M5</option>
+                                        <option value="15m">M15</option>
+                                    </select>
+                                </div>
+                                <div class="selector-group">
+                                    <label for="chartPanelBotSelect">Bot:</label>
+                                    <select id="chartPanelBotSelect">
+                                        <option value="alien">Alien Bot 👽</option>
+                                        <option value="flip">Flip Bot 🤖</option>
+                                        <option value="fire">Fire Bot 🔥</option>
+                                        <option value="baby">Baby Bot 👶🏻</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-content">
+                            <div class="backtest-stats" id="chartPanelBacktestStatsDisplay">
+                                Alien Bot - Precisão últimos (0) sinais: N/D - N/D
+                            </div>
+                            <div class="chart-container" style="height: 250px;"> <!-- Altura do gráfico reduzida -->
+                                <div id="chartPanelLoadingMessage" style="display: flex; justify-content: center; align-items: center; height: 100%;">Carregando dados...</div>
+                                <canvas id="priceChart"></canvas> <!-- Canvas para o gráfico -->
+                            </div>
+                        </div>
+                         <!-- Os botões de Comprar/Vender foram removidos desta instância do gráfico -->
+                    </div>
+                    <!-- FIM DO CHART PANEL WRAPPER -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+    // --- Polyfill for Element.prepend (for older browsers if any) ---
+    (function (arr) {
+        arr.forEach(function (item) {
+            if (item.hasOwnProperty('prepend')) {
+                return;
+            }
+            Object.defineProperty(item, 'prepend', {
+                configurable: true,
+                enumerable: true,
+                writable: true,
+                value: function prepend() {
+                    var argArr = Array.prototype.slice.call(arguments),
+                    docFrag = document.createDocumentFragment();
+                    argArr.forEach(function (argItem) {
+                        var isNode = argItem instanceof Node;
+                        docFrag.appendChild(isNode ? argItem : document.createTextNode(String(argItem)));
+                    });
+                    this.insertBefore(docFrag, this.firstChild);
+                }
+            });
+        });
+    })([Element.prototype, Document.prototype, DocumentFragment.prototype]);
+
+
+    // --- Global Scope Variables & DOM Element References ---
+    const appContentEl = document.getElementById('app-content');
+    const navLinkEls = document.querySelectorAll('.nav-link');
+    const pageSectionEls = document.querySelectorAll('.page-section');
+    const messageBoxEl = document.getElementById('message-box');
+    const messageBoxTitleEl = document.getElementById('message-box-title');
+    const messageBoxContentEl = document.getElementById('message-box-content');
+    const overlayEl = document.getElementById('overlay');
+    const logoutNavItemEl = document.getElementById('logout-nav-item');
+
+    // Welcome Page
+    const metricBancaAtualEl = document.getElementById('metric-banca-atual');
+    const metricRentabilidadeGlobalEl = document.getElementById('metric-rentabilidade-global');
+    const metricMetaLucroEl = document.getElementById('metric-meta-lucro');
+    const metricReservaCapitalEl = document.getElementById('metric-reserva-capital');
+
+    // Auth Page
+    const authTitleEl = document.getElementById('auth-title');
+    const loginFormEl = document.getElementById('login-form');
+    const registerFormEl = document.getElementById('register-form');
+
+    // Quick Guide
+    const accordionHeaderEls = document.querySelectorAll('.accordion-header');
+
+    // Dashboard
+    const cryptoQuotesContainerEl = document.getElementById('crypto-quotes-container');
+    let cryptoQuotesIntervalId;
+
+    // Cypher Quantum - Tabs
+    const quantumTabButtonEls = document.querySelectorAll('.quantum-tab-btn');
+    const settingsSubSectionEl = document.getElementById('settings-sub-section');
+    const operationSubSectionEl = document.getElementById('operation-sub-section');
+
+    // Settings Form (Inputs)
+    const initialBalanceInputEl = document.getElementById('initial-balance');
+    const payoutPercentageInputEl = document.getElementById('payout-percentage');
+    const operationModeSelectEl = document.getElementById('operation-mode');
+    const displayCurrencySelectEl = document.getElementById('display-currency');
+
+    // Operation Panel Display Elements
+    const opBancaAtualEl = document.getElementById('op-banca-atual');
+    const opRentabilidadeGlobalEl = document.getElementById('op-rentabilidade-global');
+    const opTaxaSucessoEl = document.getElementById('op-taxa-sucesso');
+    const opProximaEntradaEl = document.getElementById('op-proxima-entrada');
+    const opMessageEl = document.getElementById('op-message');
+    const opProgressBarEl = document.getElementById('op-progress-bar');
+    const opProgressTextEl = document.getElementById('op-progress-text');
+    const opHistoryListEl = document.getElementById('op-history-list');
+    const opBotSignalEl = document.getElementById('op-bot-signal');
+    const opWinBtn = document.getElementById('op-win-btn');
+    const opLossBtn = document.getElementById('op-loss-btn');
+    const opDeleteBtn = document.getElementById('op-delete-btn');
+
+
+    // Chart Panel Elements (Standalone Version)
+    const chartPanelTitleEl = document.getElementById('chartPanelTitle');
+    const chartPanelCurrentAssetEl = document.getElementById('chartPanelCurrentAsset');
+    const chartPanelCurrentTimeframeEl = document.getElementById('chartPanelCurrentTimeframe');
+    const chartPanelCandleCountdownEl = document.getElementById('chartPanelCandleCountdown');
+    const chartPanelBacktestStatsDisplayEl = document.getElementById('chartPanelBacktestStatsDisplay');
+    const chartPanelCanvasEl = document.getElementById('priceChart'); // Canvas for Chart.js
+    const chartPanelLoadingMessageEl = document.getElementById('chartPanelLoadingMessage');
+    const chartPanelCtx = chartPanelCanvasEl.getContext('2d');
+
+
+    const chartPanelAssetSelectEl = document.getElementById('chartPanelAssetSelect');
+    const chartPanelTimeframeSelectEl = document.getElementById('chartPanelTimeframeSelect');
+    const chartPanelBotSelectEl = document.getElementById('chartPanelBotSelect');
+
+    let chartPanel_currentAsset = 'BTC';
+    let chartPanel_currentTimeframe = '1m';
+    let chartPanel_currentBot = 'alien';
+    let chartPanel_chartInstance; // Para Chart.js
+    let chartPanel_webSocket;
+    let chartPanel_historicalOHLC = []; // Alterado para OHLC
+    const CHART_PANEL_MAX_STORED_CANDLES = 750; // Ajustado
+    const CHART_PANEL_INITIAL_VISIBLE_CANDLES = 15; // Ajustado
+    let chartPanel_candleCloseTimerIntervalId;
+    let chartPanel_reconnectAttempts = 0;
+
+    const CHART_PANEL_ASSET_CONFIG = {
+        'BTC': { symbol: 'BTC', binanceStreamSymbol: 'btcusdt', binanceRestSymbol: 'BTCUSDT', pricePrecision: 2 },
+        'ETH': { symbol: 'ETH', binanceStreamSymbol: 'ethusdt', binanceRestSymbol: 'ETHUSDT', pricePrecision: 2 },
+        'SOL': { symbol: 'SOL', binanceStreamSymbol: 'solusdt', binanceRestSymbol: 'SOLUSDT', pricePrecision: 4 },
+        'ADA': { symbol: 'ADA', binanceStreamSymbol: 'adausdt', binanceRestSymbol: 'ADAUSDT', pricePrecision: 4 },
+        'XRP': { symbol: 'XRP', binanceStreamSymbol: 'xrpusdt', binanceRestSymbol: 'XRPUSDT', pricePrecision: 4 },
+    };
+     const CHART_PANEL_TIMEFRAME_CONFIG = {
+        '1m': { label: 'M1', binanceInterval: '1m', durationMs: 60000, luxonUnit: 'minute' },
+        '5m': { label: 'M5', binanceInterval: '5m', durationMs: 300000, luxonUnit: 'minute' },
+        '15m': { label: 'M15', binanceInterval: '15m', durationMs: 900000, luxonUnit: 'minute' },
+    };
+
+
+    // --- Authentication State ---
+    let currentUserIsAuthenticated = false;
+
+    // --- General Utility Functions ---
+    function showMessageBox(title, message) {
+        messageBoxTitleEl.textContent = title;
+        messageBoxContentEl.textContent = message;
+        messageBoxEl.style.display = 'flex';
+        overlayEl.style.display = 'block';
+    }
+    window.hideMessageBox = function() { // Make it global for onclick
+        messageBoxEl.style.display = 'none';
+        overlayEl.style.display = 'none';
+    }
+
+    // --- Navigation ---
+    function showPage(pageId) {
+        if ((pageId === 'dashboard-page' || pageId === 'cypher-quantum-page') && !currentUserIsAuthenticated) {
+            showMessageBox('Acesso Restrito', 'Você precisa estar logado para acessar esta página.');
+            pageId = 'auth-page';
+        }
+
+        pageSectionEls.forEach(page => page.classList.remove('active'));
+        const activePage = document.getElementById(pageId);
+        if (activePage) activePage.classList.add('active');
+
+        navLinkEls.forEach(link => {
+            link.classList.remove('active');
+            if (link.dataset.page === pageId) link.classList.add('active');
+        });
+
+        if (pageId === 'dashboard-page') {
+            fetchCryptoQuotes();
+            if (!cryptoQuotesIntervalId) cryptoQuotesIntervalId = setInterval(fetchCryptoQuotes, 60000);
+        } else {
+            if (cryptoQuotesIntervalId) { clearInterval(cryptoQuotesIntervalId); cryptoQuotesIntervalId = null; }
+        }
+
+        if (pageId === 'cypher-quantum-page') {
+            loadOperationSettings(); 
+            const activeTab = document.querySelector('#cypher-quantum-page .quantum-tab-btn.active');
+            showQuantumSubSection(activeTab ? activeTab.dataset.tab : 'settings');
+        } else { 
+            if (chartPanel_webSocket && (chartPanel_webSocket.readyState === WebSocket.OPEN || chartPanel_webSocket.readyState === WebSocket.CONNECTING)) {
+                chartPanel_webSocket.onopen = null; chartPanel_webSocket.onmessage = null; chartPanel_webSocket.onerror = null; chartPanel_webSocket.onclose = null;
+                chartPanel_webSocket.close(1000, "Leaving Cypher Quantum page");
+                chartPanel_webSocket = null;
+            }
+            if (chartPanel_candleCloseTimerIntervalId) clearInterval(chartPanel_candleCloseTimerIntervalId);
+        }
+    }
+
+    navLinkEls.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            showPage(e.target.dataset.page);
+        });
+    });
+
+    function enableAuthNav() {
+        document.querySelectorAll('.nav-item-auth a').forEach(el => el.classList.remove('disabled'));
+        logoutNavItemEl.style.display = 'block';
+    }
+    function disableAuthNav() {
+        document.querySelectorAll('.nav-item-auth a').forEach(el => el.classList.add('disabled'));
+        logoutNavItemEl.style.display = 'none';
+    }
+    window.logout = function() { 
+        currentUserIsAuthenticated = false;
+        disableAuthNav();
+        showPage('auth-page');
+        showMessageBox('Sessão Encerrada', 'Você foi desconectado.');
+    }
+
+    function initWelcomePageAnimations() {
+        animateMetric(metricBancaAtualEl, 10000.00);
+        animateMetric(metricRentabilidadeGlobalEl, 15.70, '+', '%', 1);
+        animateMetric(metricMetaLucroEl, 1500.00);
+        animateMetric(metricReservaCapitalEl, 2000.00);
+    }
+
+    window.toggleAuthForm = function(formType) { 
+        if (formType === 'login') {
+            loginFormEl.style.display = 'block'; registerFormEl.style.display = 'none';
+            authTitleEl.textContent = 'Faça Login';
+        } else {
+            loginFormEl.style.display = 'none'; registerFormEl.style.display = 'block';
+            authTitleEl.textContent = 'Criar Conta';
+        }
+    }
+    loginFormEl.addEventListener('submit', (e) => {
+        e.preventDefault();
+        currentUserIsAuthenticated = true; enableAuthNav();
+        showMessageBox('Login Bem-Sucedido', 'Bem-vindo(a) de volta!');
+        showPage('quick-guide-page'); 
+    });
+    registerFormEl.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const pass = document.getElementById('register-password').value;
+        const confirmPass = document.getElementById('register-confirm-password').value;
+        if (pass !== confirmPass) {
+            showMessageBox('Erro de Cadastro', 'As senhas não coincidem.'); return;
+        }
+        currentUserIsAuthenticated = true; enableAuthNav();
+        showMessageBox('Cadastro Realizado', 'Sua conta foi criada com sucesso!');
+        showPage('quick-guide-page'); 
+    });
+
+    accordionHeaderEls.forEach(header => {
+        header.addEventListener('click', () => {
+            const content = header.nextElementSibling;
+            const icon = header.querySelector('i.fa-chevron-down');
+
+            header.classList.toggle('active');
+            if (icon) icon.classList.toggle('active');
+            
+            if (content.style.maxHeight && content.style.maxHeight !== "0px") {
+                content.style.maxHeight = "0px";
+                content.style.paddingTop = "0";
+                content.style.paddingBottom = "0";
+                 content.classList.remove('active');
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+                content.style.paddingTop = "15px";
+                content.style.paddingBottom = "15px";
+                content.classList.add('active');
+            }
+        });
+    });
+
+    async function fetchCryptoQuotes() {
+        if (!cryptoQuotesContainerEl) return;
+        const symbols = 'bitcoin,ethereum,solana,cardano,ripple';
+        const currency = 'brl';
+        const url = `https://api.coingecko.com/api/v3/simple/price?ids=${symbols}&vs_currencies=${currency}&include_24hr_change=true`;
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`API CoinGecko falhou: ${response.status}`);
+            const data = await response.json();
+            updateCryptoQuotesUI(data, currency);
+        } catch (error) {
+            console.error('Erro ao buscar cotações:', error);
+        }
+    }
+    function updateCryptoQuotesUI(data, currencyKey) {
+        const symbolMap = { bitcoin: "BTC", ethereum: "ETH", solana: "SOL", cardano: "ADA", ripple: "XRP" };
+        cryptoQuotesContainerEl.innerHTML = '';
+        Object.keys(symbolMap).forEach(key => {
+            const coinData = data[key];
+            if (coinData) {
+                const card = document.createElement('div');
+                card.className = 'crypto-card glass-card';
+                const changeClass = coinData[`${currencyKey}_24h_change`] >= 0 ? 'positive' : 'negative';
+                card.innerHTML = `
+                    <div class="symbol">${symbolMap[key]}</div>
+                    <div class="name">${key.charAt(0).toUpperCase() + key.slice(1)}</div>
+                    <div class="price">R$ ${coinData[currencyKey].toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                    <div class="change ${changeClass}">${coinData[`${currencyKey}_24h_change`].toFixed(2)}%</div>`;
+                cryptoQuotesContainerEl.appendChild(card);
+            }
+        });
+    }
+    
+    window.showQuantumSubSection = function(tabId) { 
+        settingsSubSectionEl.classList.remove('active');
+        operationSubSectionEl.classList.remove('active');
+         settingsSubSectionEl.style.display = 'none'; 
+         operationSubSectionEl.style.display = 'none'; 
+
+        if (tabId === 'settings') {
+            settingsSubSectionEl.classList.add('active');
+             settingsSubSectionEl.style.display = 'block';
+        } else if (tabId === 'operation') {
+            operationSubSectionEl.classList.add('active');
+             operationSubSectionEl.style.display = 'block'; 
+            updateOperationPanelDisplay(); 
+            chartPanel_fetchHistoricalData(); 
+        }
+        quantumTabButtonEls.forEach(btn => btn.classList.remove('active'));
+        const activeButton = document.querySelector(`.quantum-tab-btn[data-tab="${tabId}"]`);
+        if (activeButton) activeButton.classList.add('active');
+    }
+
+    // --- Operation Panel Logic (Copied and adjusted) ---
+    class TradeEntry {
+        constructor(value, outcome, timestamp = new Date().toISOString()) {
+            this.id = `trade-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+            this.value = value;
+            this.outcome = outcome; 
+            this.timestamp = timestamp;
+        }
+    }
+    class OperationLevel {
+        constructor(levelNumber, initialEntryValue) {
+            this.levelNumber = levelNumber;
+            this.entries = [];
+            this.isActive = true;
+            this.isCompleted = false;
+            this.profitOrLoss = 0;
+            this.initialEntryValueCalculated = initialEntryValue;
+        }
+    }
+    class OperationCycle {
+        constructor(cycleNumber, valuePerCycle, initialL1Entry) {
+            this.cycleNumber = cycleNumber;
+            this.levels = [new OperationLevel(1, initialL1Entry)];
+            this.isActive = true;
+            this.isCompleted = false;
+            this.totalProfitOrLoss = 0;
+            this.valuePerCycle = valuePerCycle;
+        }
+    }
+
+    const OP_MAX_ENTRIES_PER_LEVEL = 4;
+    const OP_MAX_LEVELS_PER_CYCLE = 3;
+    const OP_MAX_CYCLES_PER_PERIOD = 6;
+    const OP_DEFAULT_SETTINGS = {
+        initialBalance: null, payoutPercentage: 87,
+        riskMode: 'Agressivo', currency: 'BRL',
+    };
+
+    let opUserSettings = { ...OP_DEFAULT_SETTINGS };
+    let opValorPorCiclo = 0;
+    let opMetaDeLucroGlobal = 0;
+    let opCurrentBalance = 0;
+    let opGlobalProfitability = 0;
+    let opOverallHistory = [];
+    let opCurrentCycle = null;
+    let opPrevCycleNumber = 0;
+
+    function formatOpCurrency(value) {
+        const currencySymbol = opUserSettings.currency === 'USD' ? '$' : opUserSettings.currency === 'EUR' ? '€' : 'R$';
+        if (value === null || typeof value === 'undefined' || isNaN(value)) return `${currencySymbol} 0.00`;
+        return `${currencySymbol} ${Number(value).toFixed(2)}`;
+    }
+
+    function updateOperationMessage(message) {
+        opMessageEl.textContent = message;
+    }
+    
+    function calculateOpRiskParameters() {
+        const balance = parseFloat(opUserSettings.initialBalance) || 0;
+        const risk = opUserSettings.riskMode;
+        const percentageMap = { 'Conservador': 0.01, 'Equilibrado': 0.03, 'Agressivo': 0.12, 'Extremo': 1.00 };
+        const multiplierMap = { 'Conservador': 3, 'Equilibrado': 3, 'Agressivo': 3, 'Extremo': 1 };
+        
+        const riskMarginBase = balance * (percentageMap[risk] || percentageMap.Agressivo);
+        const calculatedRiskMargin = riskMarginBase * (multiplierMap[risk] || multiplierMap.Agressivo);
+        
+        opValorPorCiclo = calculatedRiskMargin > 0 ? calculatedRiskMargin / OP_MAX_CYCLES_PER_PERIOD : 0;
+        opMetaDeLucroGlobal = opValorPorCiclo > 0 ? (opValorPorCiclo * 1.25) * OP_MAX_CYCLES_PER_PERIOD : 0;
+    }
+
+    function initializeOperationLogic(balanceChanged = false, riskModeChanged = false) {
+        calculateOpRiskParameters(); 
+        const effectiveInitialBalance = parseFloat(opUserSettings.initialBalance) || 0;
+
+        if (riskModeChanged && opOverallHistory.length > 0) {
+            opCurrentBalance = effectiveInitialBalance + opGlobalProfitability;
+            opPrevCycleNumber = 0; opCurrentCycle = null;
+            updateOperationMessage("Modo de risco alterado. Ciclos reiniciados.");
+        } else if (balanceChanged && opOverallHistory.length === 0) {
+            opCurrentBalance = effectiveInitialBalance; opGlobalProfitability = 0; opOverallHistory = [];
+            opPrevCycleNumber = 0; opCurrentCycle = null;
+            updateOperationMessage("Banca inicial ajustada. Painel pronto.");
+        } else if (opOverallHistory.length === 0) {
+            opCurrentBalance = effectiveInitialBalance; opGlobalProfitability = 0;
+            opPrevCycleNumber = 0; opCurrentCycle = null;
+            updateOperationMessage("Painel pronto. Defina as configurações e inicie.");
+        }
+
+        if (opCurrentCycle === null && opValorPorCiclo > 0 && effectiveInitialBalance > 0 && (opUserSettings.payoutPercentage || 0) > 0) {
+            if (opPrevCycleNumber < OP_MAX_CYCLES_PER_PERIOD) startNewOperationCycle();
+            else updateOperationMessage("Período operacional concluído. Reinicie.");
+        } else if (effectiveInitialBalance <= 0 || (opUserSettings.payoutPercentage || 0) <= 0) {
+            updateOperationMessage("Ajuste 'Banca Inicial' e 'Payout %'.");
+        }
+        updateOperationPanelDisplay();
+    }
+
+    function calculateInitialEntryForLevel(levelNumber, cycleForCalc, currentValorPorCiclo) {
+        const baseInitialEntry = currentValorPorCiclo * 0.315;
+        if (currentValorPorCiclo <= 0) return 0;
+        if (levelNumber === 1) return baseInitialEntry;
+
+        const l1 = cycleForCalc?.levels.find(l => l.levelNumber === 1);
+        if (levelNumber === 2) {
+            return (l1?.isCompleted && l1.profitOrLoss > 0) ? (l1.profitOrLoss + currentValorPorCiclo * 0.75) * 0.315 : baseInitialEntry;
+        }
+        const l2 = cycleForCalc?.levels.find(l => l.levelNumber === 2);
+        if (levelNumber === 3) {
+            return (l1?.isCompleted && l1.profitOrLoss > 0 && l2?.isCompleted && l2.profitOrLoss > 0) ? (l1.profitOrLoss + l2.profitOrLoss + currentValorPorCiclo * 0.50) * 0.315 : baseInitialEntry;
+        }
+        return baseInitialEntry;
+    }
+
+    function startNewOperationCycle() {
+        const balance = parseFloat(opUserSettings.initialBalance) || 0;
+        const payout = parseInt(opUserSettings.payoutPercentage, 10) || 0;
+
+        if (opValorPorCiclo <= 0 || balance <= 0 || payout <= 0) {
+            updateOperationMessage("Ajuste 'Banca Inicial' e 'Payout %'."); opCurrentCycle = null; updateOperationPanelDisplay(); return;
+        }
+        if (opPrevCycleNumber >= OP_MAX_CYCLES_PER_PERIOD) {
+            updateOperationMessage("Período operacional concluído. Reinicie."); updateOperationPanelDisplay(); return;
+        }
+
+        const newCycleNum = opPrevCycleNumber + 1;
+        const initialL1Entry = calculateInitialEntryForLevel(1, null, opValorPorCiclo);
+        if (initialL1Entry <= 0) {
+            updateOperationMessage("Erro: Valor inicial do ciclo inválido."); opCurrentCycle = null; updateOperationPanelDisplay(); return;
+        }
+        opCurrentCycle = new OperationCycle(newCycleNum, opValorPorCiclo, initialL1Entry);
+        opPrevCycleNumber = newCycleNum;
+        updateOperationMessage(`Ciclo ${newCycleNum} iniciado.`);
+        updateOperationPanelDisplay();
+    }
+    
+    function getSuggestedOpEntryValue() {
+        if (!opCurrentCycle || !opCurrentCycle.isActive || opCurrentCycle.isCompleted) return 0;
+        const activeLevel = opCurrentCycle.levels.find(l => l.isActive);
+        if (!activeLevel || activeLevel.isCompleted) return 0;
+        if (typeof activeLevel.initialEntryValueCalculated !== 'number' || activeLevel.initialEntryValueCalculated <= 0) return 0;
+
+        const winsInLevel = activeLevel.entries.filter(e => e.outcome === 'WIN').length;
+        if (winsInLevel >= 2) return 0; 
+        if (activeLevel.entries.length >= 2 && activeLevel.entries.slice(-2).every(e => e.outcome === 'LOSS')) return 0; 
+        if (activeLevel.entries.length >= OP_MAX_ENTRIES_PER_LEVEL) return 0; 
+
+        const lastEntry = activeLevel.entries.length > 0 ? activeLevel.entries[activeLevel.entries.length - 1] : null;
+        if (!lastEntry) return activeLevel.initialEntryValueCalculated;
+        if (lastEntry.outcome === 'LOSS') return lastEntry.value * 2.17;
+        if (lastEntry.outcome === 'WIN') return activeLevel.initialEntryValueCalculated * 1.25; 
+        return activeLevel.initialEntryValueCalculated; 
+    }
+
+    window.recordTrade = function(outcome) { 
+        if (!opCurrentCycle || !opCurrentCycle.isActive) { updateOperationMessage("Nenhum ciclo ativo."); return; }
+        const entryValue = getSuggestedOpEntryValue();
+        if (entryValue <= 0) { updateOperationMessage("Condição de encerramento da etapa/ciclo atingida."); updateOperationPanelDisplay(); return; }
+        
+        const payoutRate = (parseInt(opUserSettings.payoutPercentage, 10) || 0) / 100;
+        const profit = outcome === 'WIN' ? entryValue * payoutRate : 0;
+        const loss = outcome === 'LOSS' ? entryValue : 0;
+        const netChange = profit - loss;
+
+        const newEntry = new TradeEntry(entryValue, outcome);
+        opCurrentBalance += netChange;
+        opGlobalProfitability += netChange;
+        opOverallHistory.push(newEntry);
+
+        let activeLevel = opCurrentCycle.levels.find(l => l.isActive);
+        activeLevel.entries.push(newEntry);
+        activeLevel.profitOrLoss += netChange;
+        opCurrentCycle.totalProfitOrLoss += netChange;
+
+        const winsInLevel = activeLevel.entries.filter(e => e.outcome === 'WIN').length;
+        const consecutiveLossesInLevel = (activeLevel.entries.length >= 2 && activeLevel.entries.slice(-2).every(e => e.outcome === 'LOSS'));
+        let levelShouldEnd = winsInLevel >= 2 || consecutiveLossesInLevel || activeLevel.entries.length >= OP_MAX_ENTRIES_PER_LEVEL;
+
+        const allCycleEntries = opCurrentCycle.levels.flatMap(l => l.entries);
+        const cycleEndedByGlobalLoss = (allCycleEntries.length >= 2 && allCycleEntries.slice(-2).every(e => e.outcome === 'LOSS'));
+
+        if (cycleEndedByGlobalLoss) {
+            opCurrentCycle.isCompleted = true; opCurrentCycle.isActive = false; levelShouldEnd = true;
+        }
+        if (levelShouldEnd) {
+            activeLevel.isCompleted = true; activeLevel.isActive = false;
+        }
+
+        if (opCurrentCycle.isCompleted) {
+            updateOperationMessage(`Ciclo ${opCurrentCycle.cycleNumber} encerrado.`);
+            if (opCurrentCycle.cycleNumber < OP_MAX_CYCLES_PER_PERIOD) {
+                startNewOperationCycle();
+            } else {
+                updateOperationMessage("Período operacional concluído. Reinicie.");
+            }
+        } else if (levelShouldEnd) {
+            if (activeLevel.levelNumber < OP_MAX_LEVELS_PER_CYCLE) {
+                const nextLevelNum = activeLevel.levelNumber + 1;
+                const initialEntryNext = calculateInitialEntryForLevel(nextLevelNum, opCurrentCycle, opValorPorCiclo);
+                if (initialEntryNext <= 0) {
+                    updateOperationMessage("Erro no valor da próxima etapa. Ciclo encerrado.");
+                    opCurrentCycle.isCompleted = true; opCurrentCycle.isActive = false;
+                     if (opCurrentCycle.cycleNumber < OP_MAX_CYCLES_PER_PERIOD) startNewOperationCycle();
+                     else updateOperationMessage("Período operacional concluído. Reinicie.");
+                } else {
+                    const nextLevel = new OperationLevel(nextLevelNum, initialEntryNext);
+                    opCurrentCycle.levels.push(nextLevel);
+                    opCurrentCycle.levels.forEach(l => l.isActive = (l.levelNumber === nextLevelNum));
+                    updateOperationMessage(`Avançando para Etapa ${nextLevelNum}.`);
+                }
+            } else { 
+                opCurrentCycle.isCompleted = true; opCurrentCycle.isActive = false;
+                updateOperationMessage(`Ciclo ${opCurrentCycle.cycleNumber} concluído.`);
+                if (opCurrentCycle.cycleNumber < OP_MAX_CYCLES_PER_PERIOD) startNewOperationCycle();
+                else updateOperationMessage("Período operacional concluído. Reinicie.");
+            }
+        } else {
+            updateOperationMessage("Operações em andamento.");
+        }
+        updateOperationPanelDisplay();
+    }
+
+    window.deleteLastEntry = function() { 
+        if (opOverallHistory.length === 0) { updateOperationMessage("Nenhuma entrada para apagar."); return; }
+        const entryToRemove = opOverallHistory.pop();
+        const payoutRate = (opUserSettings.payoutPercentage || 0) / 100;
+        const netChangeToReverse = entryToRemove.outcome === 'WIN' ? -(entryToRemove.value * payoutRate) : entryToRemove.value;
+        opCurrentBalance += netChangeToReverse;
+        opGlobalProfitability += netChangeToReverse;
+
+        if (opOverallHistory.length === 0) { deleteAllEntries(); return; }
+
+        let cycleWasModified = false;
+        if (opCurrentCycle && opCurrentCycle.levels.some(level => level.entries.some(e => e.id === entryToRemove.id))) {
+            for (let lIdx = opCurrentCycle.levels.length - 1; lIdx >= 0; lIdx--) {
+                const level = opCurrentCycle.levels[lIdx];
+                const entryIdx = level.entries.findIndex(e => e.id === entryToRemove.id);
+                if (entryIdx !== -1) {
+                    level.entries.splice(entryIdx, 1);
+                    level.profitOrLoss += netChangeToReverse;
+                    opCurrentCycle.totalProfitOrLoss += netChangeToReverse;
+                    level.isCompleted = false; level.isActive = true;
+                    opCurrentCycle.isCompleted = false; opCurrentCycle.isActive = true;
+                    opCurrentCycle.levels = opCurrentCycle.levels.slice(0, lIdx + 1); 
+                    opCurrentCycle.levels.forEach(lvl => lvl.isActive = (lvl.levelNumber === level.levelNumber));
+                    cycleWasModified = true;
+                    break;
+                }
+            }
+        }
+        
+        if (!cycleWasModified) { 
+            if (opPrevCycleNumber > 0) opPrevCycleNumber--;
+            startNewOperationCycle(); 
+        }
+        updateOperationMessage("Última entrada apagada.");
+        updateOperationPanelDisplay();
+    }
+    window.deleteAllEntries = function() { 
+        opCurrentBalance = parseFloat(opUserSettings.initialBalance) || 0;
+        opGlobalProfitability = 0; opOverallHistory = [];
+        opCurrentCycle = null; opPrevCycleNumber = 0;
+        initializeOperationLogic();
+        updateOperationMessage("Painel reiniciado.");
+        updateOperationPanelDisplay();
+    }
+
+    function updateOperationPanelDisplay() {
+        opBancaAtualEl.textContent = formatOpCurrency(opCurrentBalance);
+        opRentabilidadeGlobalEl.textContent = formatOpCurrency(opGlobalProfitability);
+        opRentabilidadeGlobalEl.className = `value ${opGlobalProfitability > 0 ? 'profit' : opGlobalProfitability < 0 ? 'loss' : ''}`;
+        const totalTrades = opOverallHistory.length;
+        const wins = opOverallHistory.filter(t => t.outcome === 'WIN').length;
+        opTaxaSucessoEl.textContent = `${(totalTrades > 0 ? (wins / totalTrades) * 100 : 0).toFixed(1)}%`;
+        opProximaEntradaEl.textContent = formatOpCurrency(getSuggestedOpEntryValue());
+
+        opHistoryListEl.innerHTML = '';
+        const activeLevel = opCurrentCycle?.levels.find(l => l.isActive);
+        if (activeLevel && activeLevel.entries.length > 0) {
+            activeLevel.entries.forEach((entry, index) => {
+                const li = document.createElement('li');
+                li.className = 'history-item';
+                const outcomeClass = entry.outcome === 'WIN' ? 'result win' : 'result loss';
+                li.innerHTML = `<span>Entrada ${index + 1}: ${formatOpCurrency(entry.value)}</span> <span class="${outcomeClass}">${entry.outcome}</span>`;
+                opHistoryListEl.appendChild(li);
+            });
+        } else {
+            opHistoryListEl.innerHTML = '<li style="text-align: center; color: var(--text-muted);">Nenhuma entrada nesta etapa.</li>';
+        }
+        const progress = activeLevel ? (activeLevel.entries.length / OP_MAX_ENTRIES_PER_LEVEL) * 100 : 0;
+        opProgressBarEl.style.width = `${progress}%`;
+        opProgressTextEl.textContent = `${activeLevel ? activeLevel.entries.length : 0}/${OP_MAX_ENTRIES_PER_LEVEL}`;
+        
+        const canOperate = opCurrentCycle?.isActive && activeLevel?.isActive && getSuggestedOpEntryValue() > 0 &&
+                           (parseFloat(opUserSettings.initialBalance) || 0) > 0 && (parseInt(opUserSettings.payoutPercentage, 10) || 0) > 0;
+        opWinBtn.disabled = !canOperate;
+        opLossBtn.disabled = !canOperate;
+        opDeleteBtn.disabled = opOverallHistory.length === 0;
+    }
+
+    window.handleSaveSettings = function() { // Copied from `painel_operacao_standalone.html`
+        const newInitialBalance = parseFloat(initialBalanceInputEl.value);
+        const newPayoutPercentage = parseInt(payoutPercentageInputEl.value, 10);
+
+        const balanceChanged = opUserSettings.initialBalance !== (isNaN(newInitialBalance) ? null : newInitialBalance);
+        const riskModeChanged = opUserSettings.riskMode !== operationModeSelectEl.value;
+
+        opUserSettings.initialBalance = isNaN(newInitialBalance) ? null : newInitialBalance;
+        opUserSettings.payoutPercentage = isNaN(newPayoutPercentage) ? null : newPayoutPercentage;
+        opUserSettings.riskMode = operationModeSelectEl.value;
+        opUserSettings.currency = displayCurrencySelectEl.value;
+        
+        localStorage.setItem('cypherXUserSettings_StandaloneV2', JSON.stringify(opUserSettings));
+        initializeOperationLogic(balanceChanged, riskModeChanged);
+        showMessageBox("Configurações Salvas", "Suas preferências foram atualizadas com sucesso.");
+    };
+    window.restoreDefaultSettings = function() { 
+        opUserSettings = { ...OP_DEFAULT_SETTINGS };
+        localStorage.removeItem('cypherXUserSettings_StandaloneV2');
+        loadOperationSettings(); 
+        showMessageBox("Configurações Restauradas", "Configurações padrão aplicadas.");
+    };
+    window.selectPlan = (planName) => {
+        showMessageBox("Plano Selecionado", `Você selecionou o plano ${planName}.`);
+        if (planName === 'Free') showPage('auth-page'); 
+    };
+    function loadOperationSettings() { // Copied from `painel_operacao_standalone.html`
+        const storedSettings = localStorage.getItem('cypherXUserSettings_StandaloneV2');
+        if (storedSettings) {
+            try {
+                opUserSettings = JSON.parse(storedSettings);
+                // Basic validation
+                if (typeof opUserSettings.initialBalance !== 'number' && opUserSettings.initialBalance !== null) opUserSettings.initialBalance = null;
+                if (typeof opUserSettings.payoutPercentage !== 'number' && opUserSettings.payoutPercentage !== null) opUserSettings.payoutPercentage = null;
+                if (!['Conservador', 'Equilibrado', 'Agressivo', 'Extremo'].includes(opUserSettings.riskMode)) opUserSettings.riskMode = 'Agressivo';
+                if (!['BRL', 'USD', 'EUR'].includes(opUserSettings.currency)) opUserSettings.currency = 'BRL';
+
+            } catch(e) {
+                console.error("Error parsing stored settings:", e);
+                opUserSettings = { ...OP_DEFAULT_SETTINGS }; // Fallback to defaults
+                localStorage.removeItem('cypherXUserSettings_StandaloneV2'); // Clear corrupted data
+            }
+        } else {
+            opUserSettings = { ...OP_DEFAULT_SETTINGS };
+        }
+        
+        initialBalanceInputEl.value = opUserSettings.initialBalance !== null ? opUserSettings.initialBalance : '';
+        payoutPercentageInputEl.value = opUserSettings.payoutPercentage !== null ? opUserSettings.payoutPercentage : '';
+        operationModeSelectEl.value = opUserSettings.riskMode;
+        displayCurrencySelectEl.value = opUserSettings.currency;
+        initializeOperationLogic(); 
+    }
+    
+
+    // --- Chart Panel Logic (Chart.js Version) ---
+    const CHART_PANEL_ASSET_TO_BINANCE_MAP = {
+        'BTC': { stream: 'btcusdt', rest: 'BTCUSDT', precision: 2 },
+        'ETH': { stream: 'ethusdt', rest: 'ETHUSDT', precision: 2 },
+        'SOL': { stream: 'solusdt', rest: 'SOLUSDT', precision: 4 },
+        'ADA': { stream: 'adausdt', rest: 'ADAUSDT', precision: 4 },
+        'XRP': { stream: 'xrpusdt', rest: 'XRPUSDT', precision: 4 },
+    };
+
+    const CHART_PANEL_TIMEFRAME_MAP = {
+        '1m': { binance: '1m', luxonUnit: 'minute', durationMs: 60000, label: 'M1'},
+        '5m': { binance: '5m', luxonUnit: 'minute', durationMs: 300000, label: 'M5'},
+        '15m': { binance: '15m', luxonUnit: 'minute', durationMs: 900000, label: 'M15'},
+    };
+    
+    const CHART_PANEL_BOT_CONFIG = {
+        'alien': { name: 'Alien Bot 👽', /* Add specific settings if needed */ },
+        'flip': { name: 'Flip Bot 🤖', /* Add specific settings if needed */ },
+        'fire': { name: 'Fire Bot 🔥', /* Add specific settings if needed */ },
+        'baby': { name: 'Baby Bot 👶🏻', /* Add specific settings if needed */ }
+    };
+
+    let chartPanel_ohlcData = []; // Stores {x: timestamp, o, h, l, c}
+    const CHART_PANEL_MAX_CANDLES = 750; // Max historical to fetch and store
+
+    function chartPanel_initializeChart() {
+        if (chartPanel_chartInstance) {
+            chartPanel_chartInstance.destroy();
+        }
+        const assetInfo = CHART_PANEL_ASSET_TO_BINANCE_MAP[chartPanel_currentAsset];
+        chartPanel_chartInstance = new Chart(chartPanelCtx, {
+            type: 'candlestick', // Using 'candlestick' type from chartjs-chart-financial
+            data: {
+                datasets: [{
+                    label: chartPanel_currentAsset,
+                    data: [], // Populated by chartPanel_updateChartData
+                    borderColor: 'var(--primary-color)', // For wick & borders in default theme
+                    color: { // Specific to chartjs-chart-financial
+                        up: getComputedStyle(document.documentElement).getPropertyValue('--candle-bullish').trim() || '#00FF8C',
+                        down: getComputedStyle(document.documentElement).getPropertyValue('--candle-bearish').trim() || '#FF3366',
+                        unchanged: getComputedStyle(document.documentElement).getPropertyValue('--candle-unchanged').trim() || '#999999',
+                    }
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 0 },
+                scales: {
+                    x: {
+                        type: 'time', // Time scale
+                        time: {
+                            parser: 'luxon', // Use Luxon parser if available, or 'auto'
+                            tooltipFormat: 'DD T',
+                            unit: CHART_PANEL_TIMEFRAME_MAP[chartPanel_currentTimeframe].luxonUnit,
+                            displayFormats: {
+                                millisecond: 'HH:mm:ss.SSS',
+                                second: 'HH:mm:ss',
+                                minute: 'HH:mm',
+                                hour: 'HH:mm',
+                            }
+                        },
+                        grid: { display: false, borderColor: 'var(--chart-grid-color)' },
+                        ticks: { color: 'var(--chart-tick-color)', font: { size: 9 }, maxRotation: 0, autoSkipPadding: 20, padding: 5 }
+                    },
+                    y: {
+                        position: 'right',
+                        grid: { color: 'var(--chart-grid-color)', borderDash: [2, 2] },
+                        ticks: {
+                            color: 'var(--chart-tick-color)', font: { size: 9 }, padding: 5,
+                            callback: (value) => value.toFixed(assetInfo.precision)
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        enabled: true, mode: 'index', intersect: false,
+                        callbacks: {
+                            label: function(context) {
+                                const ohlc = context.raw;
+                                if (!ohlc) return '';
+                                return `A: ${ohlc.o.toFixed(assetInfo.precision)} M: ${ohlc.h.toFixed(assetInfo.precision)} m: ${ohlc.l.toFixed(assetInfo.precision)} F: ${ohlc.c.toFixed(assetInfo.precision)}`;
+                            }
+                        }
+                    },
+                    zoom: {
+                        zoom: { wheel: { enabled: true, speed: 0.1 }, pinch: { enabled: true }, mode: 'x' },
+                        pan: { enabled: true, mode: 'x', threshold: 5 }
+                    }
+                }
+            }
+        });
+         Chart.register(ChartZoom); // Ensure zoom plugin is registered
+    }
+
+    function chartPanel_updateChartData() {
+        if (!chartPanel_chartInstance || chartPanel_ohlcData.length === 0) return;
+        
+        const visibleData = chartPanel_ohlcData.slice(-CHART_PANEL_INITIAL_VISIBLE_CANDLES); // Show last N candles
+        chartPanel_chartInstance.data.datasets[0].data = visibleData;
+        
+        // Adjust Y-axis dynamically (simplified for this example)
+        if (visibleData.length > 0) {
+            let minPrice = Math.min(...visibleData.map(d => d.l));
+            let maxPrice = Math.max(...visibleData.map(d => d.h));
+            const padding = (maxPrice - minPrice) * 0.1; // 10% padding
+            chartPanel_chartInstance.options.scales.y.min = minPrice - padding;
+            chartPanel_chartInstance.options.scales.y.max = maxPrice + padding;
+        }
+        chartPanel_chartInstance.update('none');
+    }
+
+    function chartPanel_updateTitleAndInfo() {
+        const assetConf = CHART_PANEL_ASSET_CONFIG[chartPanel_currentAsset];
+        const tfConf = CHART_PANEL_TIMEFRAME_MAP[chartPanel_currentTimeframe];
+        const botConf = CHART_PANEL_BOT_CONFIG[chartPanel_currentBot];
+        
+        if(chartPanelTitleEl) chartPanelTitleEl.textContent = `Gráfico - ${tfConf.label} - ${assetConf.symbol} — ${botConf.name}`;
+        if(chartPanelCurrentAssetEl) chartPanelCurrentAssetEl.textContent = assetConf.symbol;
+        if(chartPanelCurrentTimeframeEl) chartPanelCurrentTimeframeEl.textContent = tfConf.label;
+    }
+
+    function chartPanel_startCandleCountdown(candleCloseTimeMs) {
+        if (chartPanel_candleCloseTimerIntervalId) clearInterval(chartPanel_candleCloseTimerIntervalId);
+        
+        const update = () => {
+            const now = Date.now();
+            const remaining = Math.max(0, Math.floor((candleCloseTimeMs - now) / 1000));
+            if (chartPanelCandleCountdownEl) {
+                chartPanelCandleCountdownEl.textContent = `Expira em: ${formatTime(remaining)}`;
+                chartPanelCandleCountdownEl.className = 'countdown-timer'; 
+                if (remaining <= 20 && remaining > 9) chartPanelCandleCountdownEl.classList.add('yellow-alert');
+                else if (remaining <= 9) chartPanelCandleCountdownEl.classList.add('red-alert');
+            }
+            if (remaining <= 0) clearInterval(chartPanel_candleCloseTimerIntervalId);
+        };
+        update();
+        chartPanel_candleCloseTimerIntervalId = setInterval(update, 1000);
+    }
+
+    function chartPanel_simulateBacktestStats() { // Placeholder, adapt with actual bot logic
+        if (!chartPanelBacktestStatsDisplayEl) return;
+        const mockWinRate = Math.random() * 30 + 70; 
+        const mockTotalEvaluated = Math.floor(Math.random() * 5) + 10;
+        let accuracyText = "N/D"; let accuracyClass = "";
+        if (mockWinRate < 70) { accuracyText = "Não indicado"; accuracyClass = "bad"; }
+        else if (mockWinRate < 77) { accuracyText = "Indicado"; accuracyClass = "medium"; }
+        else { accuracyText = "Muito indicado"; accuracyClass = "good"; }
+        
+        const botName = CHART_PANEL_BOT_CONFIG[chartPanel_currentBot].name.split(' ')[0];
+        chartPanelBacktestStatsDisplayEl.innerHTML = `${botName} Bot - A taxa de acerto atual está sendo baseada nos últimos (${mockTotalEvaluated}) sinais que o gráfico analisou: <span class="accuracy ${accuracyClass}">${mockWinRate.toFixed(1)}%</span> - ${accuracyText}`;
+    
+        if (opBotSignalEl) {
+             const lastSignalType = Math.random() > 0.5 ? 'COMPRA' : 'VENDA';
+             const interpretation = chartPanel_currentBot === 'flip' ? 'Potencial Reversão' : 'Potencial Continuação';
+             const assetSymbolForOp = CHART_PANEL_ASSET_CONFIG[chartPanel_currentAsset].symbol;
+             const tfLabelForOp = CHART_PANEL_TIMEFRAME_MAP[chartPanel_currentTimeframe].label;
+
+             opBotSignalEl.textContent = `${botName} Bot (${assetSymbolForOp} ${tfLabelForOp}): ${lastSignalType} (${interpretation}) - AGUARDE PRÓXIMA VELA`;
+             opBotSignalEl.style.color = lastSignalType === 'COMPRA' ? 'var(--win-color)' : 'var(--loss-color)';
+             opBotSignalEl.style.borderColor = opBotSignalEl.style.color;
+        }
+    }
+
+    async function chartPanel_fetchHistoricalData() {
+        if (chartPanelLoadingMessageEl) chartPanelLoadingMessageEl.style.display = 'flex';
+        if (chartPanelCanvasEl) chartPanelCanvasEl.style.display = 'none';
+        chartPanel_updateTitleAndInfo();
+
+        const assetConfig = CHART_PANEL_ASSET_CONFIG[chartPanel_currentAsset];
+        const timeframeConfig = CHART_PANEL_TIMEFRAME_MAP[chartPanel_currentTimeframe];
+        const binanceRestUrl = `https://api.binance.com/api/v3/klines?symbol=${assetConfig.binanceRestSymbol}&interval=${timeframeConfig.binanceInterval}&limit=${CHART_PANEL_MAX_CANDLES}`;
+
+        try {
+            const response = await fetch(binanceRestUrl);
+            if (!response.ok) throw new Error(`API Binance Histórico falhou: ${response.status}`);
+            const data = await response.json();
+            
+            chartPanel_ohlcData = data.map(k => ({
+                x: parseInt(k[0]),      // Timestamp (início da vela)
+                o: parseFloat(k[1]),    // Open
+                h: parseFloat(k[2]),    // High
+                l: parseFloat(k[3]),    // Low
+                c: parseFloat(k[4])     // Close
+                // Volume k[5] não é usado diretamente pelo candlestick, mas pode ser para outros indicadores
+            }));
+
+            if (!chartPanel_chartInstance) chartPanel_initializeChart();
+            else chartPanel_chartInstance.data.datasets[0].label = assetConfig.symbol; // Update label if chart exists
+
+            chartPanel_updateChartData(); // Update with historical data
+            
+            if(chartPanelLoadingMessageEl) chartPanelLoadingMessageEl.style.display = 'none';
+            if(chartPanelCanvasEl) chartPanelCanvasEl.style.display = 'block';
+            
+            chartPanel_connectWebSocket();
+            chartPanel_simulateBacktestStats(); // Run backtest with historical data
+
+        } catch (error) {
+            console.error("[ChartPanel] Erro ao buscar dados históricos:", error);
+            if(chartPanelLoadingMessageEl) chartPanelLoadingMessageEl.textContent = `Erro: ${error.message || 'Falha desconhecida ao buscar histórico'}`;
+            if(chartPanelCanvasEl) chartPanelCanvasEl.style.display = 'none';
+            if (chartPanel_webSocket && (chartPanel_webSocket.readyState === WebSocket.OPEN || chartPanel_webSocket.readyState === WebSocket.CONNECTING)) {
+                 chartPanel_webSocket.close(1000, "Falha ao carregar histórico");
+            }
+        }
+    }
+
+    function chartPanel_connectWebSocket() {
+        if (chartPanel_webSocket && (chartPanel_webSocket.readyState === WebSocket.OPEN || chartPanel_webSocket.readyState === WebSocket.CONNECTING)) {
+            chartPanel_webSocket.onopen = null; chartPanel_webSocket.onmessage = null; chartPanel_webSocket.onerror = null; chartPanel_webSocket.onclose = null;
+            chartPanel_webSocket.close(1000, "Nova conexão solicitada");
+        }
+        chartPanel_webSocket = null;
+
+        const assetConfig = CHART_PANEL_ASSET_CONFIG[chartPanel_currentAsset];
+        const timeframeConfig = CHART_PANEL_TIMEFRAME_MAP[chartPanel_currentTimeframe];
+        const wsURL = `wss://stream.binance.com:9443/ws/${assetConfig.binanceStreamSymbol}@kline_${timeframeConfig.binanceInterval}`;
+        
+        chartPanel_webSocket = new WebSocket(wsURL);
+        chartPanel_webSocket.onopen = () => {
+            console.log(`[ChartPanel] WebSocket CONECTADO para ${assetConfig.symbol} @ ${timeframeConfig.label}`);
+            chartPanel_reconnectAttempts = 0; 
+        };
+        chartPanel_webSocket.onmessage = (event) => {
+            if (!chartPanel_chartInstance) return;
+            try {
+                const message = JSON.parse(event.data);
+                const kline = message.k;
+                const newCandleOHLC = {
+                    x: parseInt(kline.t), o: parseFloat(kline.o), h: parseFloat(kline.h),
+                    l: parseFloat(kline.l), c: parseFloat(kline.c)
+                };
+
+                const lastCandleInState = chartPanel_ohlcData.length > 0 ? chartPanel_ohlcData[chartPanel_ohlcData.length - 1] : null;
+
+                if (lastCandleInState && newCandleOHLC.x === lastCandleInState.x) { 
+                    chartPanel_ohlcData[chartPanel_ohlcData.length - 1] = newCandleOHLC; // Update current
+                } else if (!lastCandleInState || newCandleOHLC.x > lastCandleInState.x) { 
+                    chartPanel_ohlcData.push(newCandleOHLC); // New candle
+                    if (chartPanel_ohlcData.length > CHART_PANEL_MAX_CANDLES) {
+                        chartPanel_ohlcData.shift();
+                    }
+                }
+                
+                chartPanel_updateChartData();
+                chartPanel_startCandleCountdown(parseInt(kline.T) + 1000); 
+                chartPanel_simulateBacktestStats(); 
+            } catch (e) { console.error("[ChartPanel] Erro ao processar mensagem WebSocket:", e, event.data); }
+        };
+        chartPanel_webSocket.onerror = (errorEvent) => {
+            console.error(`[ChartPanel] WebSocket ERRO para ${assetConfig.symbol} @ ${timeframeConfig.label}. Evento:`, errorEvent);
+        };
+        chartPanel_webSocket.onclose = (event) => {
+            console.log(`[ChartPanel] WebSocket DESCONECTADO para ${assetConfig.symbol} @ ${timeframeConfig.label}. Code: ${event.code}, Clean: ${event.wasClean}, Reason: ${event.reason}`);
+            if (chartPanel_candleCloseTimerIntervalId) clearInterval(chartPanel_candleCloseTimerIntervalId);
+            if (event.code !== 1000 && chartPanel_reconnectAttempts < 5) {
+                chartPanel_reconnectAttempts++;
+                const delay = Math.min(30000, 1000 * Math.pow(2, chartPanel_reconnectAttempts));
+                setTimeout(chartPanel_connectWebSocket, delay);
+            } else if (event.code !== 1000) {
+                showMessageBox("Erro de Conexão (Gráfico)", `Não foi possível reconectar ao stream de ${assetConfig.symbol}.`);
+            }
+        };
+    }
+    
+    if(chartPanelAssetSelectEl) chartPanelAssetSelectEl.addEventListener('change', (e) => { chartPanel_currentAsset = e.target.value; chartPanel_fetchHistoricalData(); });
+    if(chartPanelTimeframeSelectEl) chartPanelTimeframeSelectEl.addEventListener('change', (e) => { chartPanel_currentTimeframe = e.target.value; chartPanel_fetchHistoricalData(); });
+    if(chartPanelBotSelectEl) chartPanelBotSelectEl.addEventListener('change', (e) => { chartPanel_currentBot = e.target.value; chartPanel_simulateBacktestStats(); });
+
+
+    // --- Initial Load ---
+    window.onload = () => {
+        showPage('auth-page'); 
+        initWelcomePageAnimations();
+        loadOperationSettings();
+        disableAuthNav();
+        // Do not call chartPanel_fetchHistoricalData() here, it will be called when #cypher-quantum-page is shown
+    };
+
+    // Make operation panel functions globally accessible for HTML onclick
+    window.handleSaveSettings = handleSaveSettings;
+    window.restoreDefaultSettings = restoreDefaultSettings;
+    window.recordTrade = recordTrade;
+    window.deleteLastEntry = deleteLastEntry;
+    window.deleteAllEntries = deleteAllEntries;
+    window.selectPlan = (planName) => {
+        showMessageBox("Plano Selecionado", `Você selecionou o plano ${planName}.`);
+        if (planName === 'Free') showPage('auth-page'); 
+    };
+
+    </script>
+</body>
+</html>
